@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<title>PPL Coach v1</title>
+<title>PPL Coach v3</title>
 <style>
 :root{
   --bg:#0b0f14; --panel:#121922; --panel2:#182231; --text:#f5f7fa; --muted:#9aa7b5;
@@ -55,22 +55,34 @@ pre{white-space:pre-wrap;word-break:break-word;background:#0a1017;border:1px sol
 .toast{position:fixed;top:14px;left:50%;transform:translateX(-50%);background:#111b27;border:1px solid var(--border);padding:10px 14px;border-radius:12px;z-index:50;display:none}
 .timer{font-variant-numeric:tabular-nums;font-size:22px;font-weight:900}
 @media(max-width:520px){.grid2{grid-template-columns:1fr}.set-row{grid-template-columns:34px 1fr 1fr 38px}.app{padding-left:10px;padding-right:10px}}
+
+.pr-badge{display:inline-flex;padding:5px 8px;border-radius:999px;font-size:11px;font-weight:900;background:#8fd3ff;color:#061018}
+.last-box{margin-top:10px;padding:10px;border:1px solid var(--border);border-radius:12px;background:#0a1119}
+.last-box .setsline{font-weight:800;color:#dcecff;margin-top:4px}
+.note-area{margin-top:8px;min-height:68px}
+.set-row-v3{display:grid;grid-template-columns:34px 1fr 1fr .8fr 38px;gap:7px;align-items:center;margin:8px 0}
+.set-head-v3{display:grid;grid-template-columns:34px 1fr 1fr .8fr 38px;gap:7px;color:var(--muted);font-size:11px}
+.suggestion{margin-top:8px;padding:9px 10px;border-radius:12px;border:1px solid var(--border);background:#101923}
+.suggestion strong{display:block;margin-bottom:3px}
+.kpi3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.kpi3 .metric b{font-size:16px}
+.history-ex{padding:9px 0;border-top:1px solid var(--border)}
+.history-ex:first-child{border-top:0}
+@media(max-width:520px){
+  .set-row-v3{grid-template-columns:28px 1fr 1fr .75fr 34px}
+  .set-head-v3{grid-template-columns:28px 1fr 1fr .75fr 34px}
+  .kpi3{grid-template-columns:1fr}
+}
+
 </style>
-
-<link rel="manifest" href="./manifest.webmanifest">
-<meta name="theme-color" content="#0b0f14">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="PPL Coach">
-
 </head>
 <body>
 <div class="toast" id="toast"></div>
 <div class="app">
   <div class="topbar">
     <div class="title-wrap">
-      <h1>PPL Coach</h1>
-      <small>Workout logger • Double progression • Coach snapshot</small>
+      <h1>PPL Coach v3</h1>
+      <small>Smart PPL logger • Progression • PRs • Coach snapshot</small>
     </div>
     <span class="badge" id="sessionStatus">No active session</span>
   </div>
@@ -263,7 +275,11 @@ const today = new Date().toISOString().slice(0,10);
 $("workoutDate").value = today;
 
 function loadDB(){
-  try{return JSON.parse(localStorage.getItem(KEY)) || {workouts:[]}}catch{return {workouts:[]}}
+  try{
+    const db = JSON.parse(localStorage.getItem(KEY)) || {workouts:[]};
+    if(!Array.isArray(db.workouts)) db.workouts = [];
+    return db;
+  }catch{return {workouts:[]}}
 }
 function saveDB(db){ localStorage.setItem(KEY, JSON.stringify(db)); }
 function saveActive(){ localStorage.setItem(ACTIVE_KEY, JSON.stringify(active)); }
@@ -274,9 +290,7 @@ function toast(msg){
 }
 function uuid(){
   try{
-    if(window.crypto && typeof window.crypto.randomUUID === "function"){
-      return window.crypto.randomUUID();
-    }
+    if(window.crypto && typeof window.crypto.randomUUID === "function") return window.crypto.randomUUID();
   }catch(e){}
   return Date.now()+"-"+Math.random().toString(36).slice(2);
 }
@@ -303,28 +317,13 @@ $("dayType").addEventListener("change",()=>{ if(!active) fillMuscles(); });
 
 function startSession(){
   try{
-    if(active){
-      renderSession(); toast("Resumed current workout"); return;
-    }
+    if(active){ renderSession(); toast("Resumed current workout"); return; }
     const selectedDay = $("dayType").value;
     const selectedDate = $("workoutDate").value || today;
-    if(!selectedDay){ alert("Choose Push, Pull or Legs first."); return; }
-    if(!selectedDate){ alert("Choose a workout date first."); return; }
-
-    active={
-      id:uuid(),
-      day:selectedDay,
-      date:selectedDate,
-      startedAt:new Date().toISOString(),
-      exercises:[]
-    };
-    saveActive();
-    fillMuscles();
-    renderSession();
-    toast("Workout started");
+    active={id:uuid(),day:selectedDay,date:selectedDate,startedAt:new Date().toISOString(),exercises:[]};
+    saveActive(); fillMuscles(); renderSession(); toast("Workout started");
   }catch(err){
-    console.error(err);
-    alert("Could not start workout: " + (err && err.message ? err.message : String(err)));
+    alert("Could not start workout: " + (err?.message || String(err)));
   }
 }
 $("startBtn").addEventListener("click", startSession);
@@ -342,15 +341,33 @@ function getMeta(name){
       for(const ex of group) if(ex.name===name) return ex;
   return null;
 }
-
-function findLastPerformance(name){
+function historyForExercise(name){
   const db=loadDB();
-  const ws=[...db.workouts].sort((a,b)=>new Date(b.finishedAt)-new Date(a.finishedAt));
-  for(const w of ws){
-    const e=w.exercises.find(x=>x.name===name);
-    if(e) return {workout:w, exercise:e};
-  }
-  return null;
+  return [...db.workouts]
+    .filter(w=>w.exercises?.some(e=>e.name===name))
+    .sort((a,b)=>new Date(b.finishedAt||b.date)-new Date(a.finishedAt||a.date))
+    .map(w=>({workout:w,exercise:w.exercises.find(e=>e.name===name)}));
+}
+function findLastPerformance(name){
+  return historyForExercise(name)[0] || null;
+}
+function bestSetBefore(name, excludeWorkoutId=null){
+  const entries=historyForExercise(name);
+  const sets=[];
+  entries.forEach(({workout,exercise})=>{
+    if(excludeWorkoutId && workout.id===excludeWorkoutId) return;
+    (exercise.sets||[]).forEach(s=>{
+      if(s.weight!=="" && s.reps!=="") sets.push({weight:+s.weight||0,reps:+s.reps||0,date:workout.date});
+    });
+  });
+  return sets.sort((a,b)=>b.weight-a.weight || b.reps-a.reps)[0] || null;
+}
+function isPRSet(name, set, workoutId=null){
+  if(set.weight==="" || set.reps==="") return false;
+  const prev=bestSetBefore(name, workoutId);
+  if(!prev) return true;
+  const w=+set.weight||0, r=+set.reps||0;
+  return w>prev.weight || (w===prev.weight && r>prev.reps);
 }
 
 function addExercise(){
@@ -361,10 +378,11 @@ function addExercise(){
   const sets = Array.from({length:3},(_,i)=>({
     weight:last?.exercise?.sets?.[i]?.weight ?? "",
     reps:"",
+    rir:""
   }));
   active.exercises.push({
     id:uuid(), muscle, name:meta.name, type:meta.type, min:meta.min,max:meta.max, rest:meta.rest,
-    cue:meta.cue,pitfalls:meta.pitfalls, sets
+    cue:meta.cue,pitfalls:meta.pitfalls, note:"", sets
   });
   saveActive(); renderExerciseList();
 }
@@ -373,7 +391,7 @@ $("addExerciseBtn").onclick=addExercise;
 function addSet(exId){
   const ex=active.exercises.find(e=>e.id===exId);
   const prev=ex.sets[ex.sets.length-1] || {};
-  ex.sets.push({weight:prev.weight??"",reps:""});
+  ex.sets.push({weight:prev.weight??"",reps:"",rir:""});
   saveActive();renderExerciseList();
 }
 function removeSet(exId,i){
@@ -389,15 +407,39 @@ function updateSet(exId,i,field,val){
   ex.sets[i][field]=val===""?"":Number(val);
   saveActive();
 }
+function updateNote(exId,val){
+  const ex=active.exercises.find(e=>e.id===exId);
+  ex.note=val; saveActive();
+}
+function useLastWeights(exId){
+  const ex=active.exercises.find(e=>e.id===exId);
+  const last=findLastPerformance(ex.name);
+  if(!last){toast("No previous workout for this exercise");return}
+  ex.sets = last.exercise.sets.map(s=>({weight:s.weight??"",reps:"",rir:""}));
+  saveActive();renderExerciseList();toast("Last weights loaded");
+}
 
 function progressionStatus(ex){
-  const valid=ex.sets.filter(s=>s.weight!=="" && s.reps!=="");
+  const valid=(ex.sets||[]).filter(s=>s.weight!=="" && s.reps!=="");
   if(!valid.length) return {text:"Not logged",cls:""};
   const allTop = valid.length===ex.sets.length && valid.every(s=>Number(s.reps)>=ex.max);
   if(allTop) return {text:"Increase weight next time",cls:"good"};
-  const allIn = valid.every(s=>Number(s.reps)>=ex.min && Number(s.reps)<=ex.max);
-  if(allIn) return {text:"Keep weight, add reps",cls:"warn"};
+  const allAtLeastMin = valid.every(s=>Number(s.reps)>=ex.min);
+  if(allAtLeastMin) return {text:"Keep weight, add reps",cls:"warn"};
   return {text:"Build reps / stabilize load",cls:""};
+}
+function nextSessionSuggestion(ex){
+  const status=progressionStatus(ex);
+  const logged=(ex.sets||[]).filter(s=>s.weight!==""&&s.reps!=="");
+  if(!logged.length) return "Log working sets first.";
+  const lastWeight=logged[logged.length-1].weight;
+  if(status.text==="Increase weight next time"){
+    return `Increase load by the smallest practical increment next session. Current working load is around ${lastWeight} kg.`;
+  }
+  if(status.text==="Keep weight, add reps"){
+    return `Keep the same load next session and try to add 1–2 total reps while staying in the ${ex.min}–${ex.max} range.`;
+  }
+  return `Keep or slightly reduce load if needed until all working sets reach at least ${ex.min} clean reps.`;
 }
 
 function renderExerciseList(){
@@ -406,8 +448,12 @@ function renderExerciseList(){
     box.innerHTML='<p class="muted small">No exercises added yet.</p>'; return;
   }
   active.exercises.forEach(ex=>{
+    if(!Array.isArray(ex.sets)) ex.sets=[];
+    ex.sets.forEach(s=>{ if(s.rir===undefined) s.rir=""; });
+    if(ex.note===undefined) ex.note="";
     const last=findLastPerformance(ex.name);
     const status=progressionStatus(ex);
+    const hasPR=ex.sets.some(s=>isPRSet(ex.name,s,active.id));
     const div=document.createElement("div");div.className="exercise";
     div.innerHTML=`
       <div class="exercise-head">
@@ -417,34 +463,59 @@ function renderExerciseList(){
         </div>
         <button class="iconbtn danger" data-remove="${ex.id}">×</button>
       </div>
-      <div style="margin-top:8px"><span class="badge ${status.cls}">${status.text}</span></div>
-      ${last ? `<div class="muted small" style="margin-top:8px">Last: ${last.workout.date} • ${last.exercise.sets.map(s=>`${s.weight}kg×${s.reps}`).join(" / ")}</div>`:""}
+
+      <div class="row wrap" style="margin-top:8px">
+        <span class="badge ${status.cls}">${status.text}</span>
+        ${hasPR?'<span class="pr-badge">🏆 PR pace</span>':""}
+      </div>
+
+      ${last ? `
+      <div class="last-box">
+        <div class="small muted">Last time • ${last.workout.date}</div>
+        <div class="setsline">${(last.exercise.sets||[]).filter(s=>s.weight!==""&&s.reps!=="").map(s=>`${s.weight}kg × ${s.reps}`).join(" / ") || "No completed sets"}</div>
+        <button class="ghost" data-uselast="${ex.id}" style="margin-top:8px">Use last weights</button>
+      </div>` : ""}
+
+      <div class="suggestion">
+        <strong>Next-session guidance</strong>
+        <span class="small muted">${nextSessionSuggestion(ex)}</span>
+      </div>
+
       <details style="margin-top:10px">
-        <summary>Technique</summary>
+        <summary>Technique & pitfalls</summary>
         <div class="small muted" style="margin-top:8px"><b>Cue:</b> ${ex.cue}<br><b>Pitfalls:</b> ${ex.pitfalls}</div>
       </details>
+
       <div class="sep"></div>
-      <div class="small muted" style="display:grid;grid-template-columns:40px 1fr 1fr 42px;gap:8px">
-        <div>Set</div><div>Weight (kg)</div><div>Reps</div><div></div>
-      </div>
+      <div class="set-head-v3"><div>Set</div><div>Weight</div><div>Reps</div><div>RIR</div><div></div></div>
       <div class="sets"></div>
-      <button class="ghost" data-addset="${ex.id}" style="width:100%;margin-top:6px">+ Add set</button>`;
+      <button class="ghost" data-addset="${ex.id}" style="width:100%;margin-top:6px">+ Add set</button>
+
+      <label style="margin-top:10px">Exercise notes</label>
+      <textarea class="note-area" data-note="${ex.id}" placeholder="e.g. seat position, grip, pain, machine number, form cue...">${ex.note||""}</textarea>
+    `;
     const sets=div.querySelector(".sets");
     ex.sets.forEach((s,i)=>{
-      const r=document.createElement("div");r.className="set-row";
+      const pr=isPRSet(ex.name,s,active.id);
+      const r=document.createElement("div");r.className="set-row-v3";
       r.innerHTML=`
-        <div class="set-num">${i+1}</div>
+        <div class="set-num">${i+1}${pr?'🏆':''}</div>
         <input inputmode="decimal" type="number" step="0.5" min="0" value="${s.weight}" data-ex="${ex.id}" data-i="${i}" data-field="weight">
         <input inputmode="numeric" type="number" step="1" min="0" value="${s.reps}" data-ex="${ex.id}" data-i="${i}" data-field="reps">
+        <input inputmode="numeric" type="number" step="1" min="0" max="5" value="${s.rir??""}" data-ex="${ex.id}" data-i="${i}" data-field="rir" placeholder="0–5">
         <button class="iconbtn ghost" data-rmset="${ex.id}" data-i="${i}">−</button>`;
       sets.appendChild(r);
     });
     box.appendChild(div);
   });
-  box.querySelectorAll("input[data-ex]").forEach(inp=>inp.oninput=e=>updateSet(e.target.dataset.ex,+e.target.dataset.i,e.target.dataset.field,e.target.value));
+  box.querySelectorAll("input[data-ex]").forEach(inp=>inp.oninput=e=>{
+    updateSet(e.target.dataset.ex,+e.target.dataset.i,e.target.dataset.field,e.target.value);
+  });
   box.querySelectorAll("[data-addset]").forEach(b=>b.onclick=()=>addSet(b.dataset.addset));
   box.querySelectorAll("[data-rmset]").forEach(b=>b.onclick=()=>removeSet(b.dataset.rmset,+b.dataset.i));
   box.querySelectorAll("[data-remove]").forEach(b=>b.onclick=()=>removeExercise(b.dataset.remove));
+  box.querySelectorAll("[data-uselast]").forEach(b=>b.onclick=()=>useLastWeights(b.dataset.uselast));
+  box.querySelectorAll("[data-note]").forEach(t=>t.oninput=e=>updateNote(e.target.dataset.note,e.target.value));
 }
 
 function renderSession(){
@@ -463,7 +534,7 @@ function renderSession(){
 function validateWorkout(){
   if(!active.exercises.length) return "Add at least one exercise.";
   for(const ex of active.exercises){
-    const logged=ex.sets.filter(s=>s.weight!=="" && s.reps!=="");
+    const logged=(ex.sets||[]).filter(s=>s.weight!=="" && s.reps!=="");
     if(!logged.length) return `Log at least one set for ${ex.name}.`;
   }
   return null;
@@ -472,7 +543,11 @@ $("finishBtn").onclick=()=>{
   const err=validateWorkout(); if(err){alert(err);return}
   const db=loadDB();
   active.finishedAt=new Date().toISOString();
-  active.exercises.forEach(ex=>{ex.progression=progressionStatus(ex).text});
+  active.exercises.forEach(ex=>{
+    ex.progression=progressionStatus(ex).text;
+    ex.nextSuggestion=nextSessionSuggestion(ex);
+    ex.prSets=(ex.sets||[]).map((s,i)=>isPRSet(ex.name,s,active.id)?i:null).filter(i=>i!==null);
+  });
   db.workouts.push(active);saveDB(db);
   active=null;localStorage.removeItem(ACTIVE_KEY);renderSession();renderHistory();fillProgressExercises();
   toast("Workout saved");
@@ -480,15 +555,31 @@ $("finishBtn").onclick=()=>{
 
 function renderHistory(){
   const db=loadDB(), box=$("historyList"); box.innerHTML="";
-  const ws=[...db.workouts].sort((a,b)=>new Date(b.finishedAt)-new Date(a.finishedAt));
+  const ws=[...db.workouts].sort((a,b)=>new Date(b.finishedAt||b.date)-new Date(a.finishedAt||a.date));
   if(!ws.length){box.innerHTML='<p class="muted">No saved workouts yet.</p>';return}
   ws.forEach(w=>{
+    const totalSets=(w.exercises||[]).reduce((n,e)=>n+(e.sets||[]).filter(s=>s.weight!==""&&s.reps!=="").length,0);
+    const prCount=(w.exercises||[]).reduce((n,e)=>n+(e.prSets?.length||0),0);
     const d=document.createElement("div");d.className="history-item";
-    d.innerHTML=`<details><summary>${w.date} • ${w.day} • ${w.exercises.length} exercises</summary>
+    d.innerHTML=`<details>
+      <summary>${w.date} • ${w.day} • ${w.exercises.length} exercises</summary>
+      <div class="kpi3" style="margin-top:10px">
+        <div class="metric"><b>${totalSets}</b><span>working sets</span></div>
+        <div class="metric"><b>${prCount}</b><span>PR sets</span></div>
+        <div class="metric"><b>${w.exercises.length}</b><span>exercises</span></div>
+      </div>
       <div style="margin-top:8px">${w.exercises.map(e=>`
-        <div style="margin-bottom:10px"><b>${e.name}</b><br>
-        <span class="muted small">${e.sets.filter(s=>s.weight!==""&&s.reps!=="").map(s=>`${s.weight} kg × ${s.reps}`).join(" • ")}<br>${e.progression||""}</span></div>`).join("")}
-      </div></details>`;
+        <div class="history-ex">
+          <b>${e.name}</b>
+          ${e.prSets?.length?'<span class="pr-badge" style="margin-left:6px">🏆 PR</span>':""}
+          <div class="muted small" style="margin-top:4px">
+            ${(e.sets||[]).filter(s=>s.weight!==""&&s.reps!=="").map((s,i)=>`Set ${i+1}: ${s.weight} kg × ${s.reps}${s.rir!==""&&s.rir!==undefined?` • RIR ${s.rir}`:""}`).join("<br>")}
+          </div>
+          ${e.note?`<div class="small" style="margin-top:5px"><b>Note:</b> ${e.note}</div>`:""}
+          <div class="small muted" style="margin-top:5px">${e.progression||""}</div>
+        </div>`).join("")}
+      </div>
+    </details>`;
     box.appendChild(d);
   });
 }
@@ -510,58 +601,65 @@ function fillProgressExercises(){
 }
 function renderProgress(){
   const name=$("progressExercise").value;
-  const db=loadDB();
-  const entries=[];
-  [...db.workouts].sort((a,b)=>new Date(b.finishedAt)-new Date(a.finishedAt)).forEach(w=>{
-    const e=w.exercises.find(x=>x.name===name); if(e)entries.push({w,e});
-  });
+  const entries=historyForExercise(name);
   const box=$("progressContent");
   if(!entries.length){box.innerHTML='<p class="muted">No history for this exercise yet.</p>';return}
   const latest=entries[0], meta=getMeta(name);
-  const best=entries.flatMap(x=>x.e.sets.map(s=>({date:x.w.date,weight:+s.weight||0,reps:+s.reps||0})))
-    .sort((a,b)=>b.weight-a.weight || b.reps-a.reps)[0];
+  const allSets=entries.flatMap(x=>(x.exercise.sets||[]).filter(s=>s.weight!==""&&s.reps!=="").map(s=>({date:x.workout.date,weight:+s.weight||0,reps:+s.reps||0,rir:s.rir})));
+  const best=allSets.sort((a,b)=>b.weight-a.weight || b.reps-a.reps)[0];
+  const latestStatus=progressionStatus(latest.exercise);
   box.innerHTML=`
-    <div class="grid2">
-      <div class="metric"><b>${latest.w.date}</b><span>Last performed</span></div>
-      <div class="metric"><b>${best.weight} kg × ${best.reps}</b><span>Highest-weight set</span></div>
+    <div class="kpi3">
+      <div class="metric"><b>${latest.workout.date}</b><span>Last performed</span></div>
+      <div class="metric"><b>${best.weight} kg × ${best.reps}</b><span>Best set</span></div>
+      <div class="metric"><b>${entries.length}</b><span>Logged sessions</span></div>
     </div>
     <div class="card" style="margin:10px 0 0;background:#0e151e">
-      <b>Latest sets</b>
-      <div class="muted small" style="margin-top:6px">${latest.e.sets.map(s=>`${s.weight} kg × ${s.reps}`).join("<br>")}</div>
-      <div style="margin-top:10px"><span class="badge ${progressionStatus(latest.e).cls}">${progressionStatus(latest.e).text}</span></div>
+      <b>Latest performance</b>
+      <div class="muted small" style="margin-top:6px">${(latest.exercise.sets||[]).filter(s=>s.weight!==""&&s.reps!=="").map((s,i)=>`Set ${i+1}: ${s.weight} kg × ${s.reps}${s.rir!==""&&s.rir!==undefined?` • RIR ${s.rir}`:""}`).join("<br>")}</div>
+      <div class="row wrap" style="margin-top:10px">
+        <span class="badge ${latestStatus.cls}">${latestStatus.text}</span>
+        ${latest.exercise.prSets?.length?'<span class="pr-badge">🏆 PR</span>':""}
+      </div>
+      <div class="suggestion"><strong>Next session</strong><span class="small muted">${latest.exercise.nextSuggestion||nextSessionSuggestion(latest.exercise)}</span></div>
       ${meta?`<div class="muted small" style="margin-top:10px">Target: ${meta.min}–${meta.max} reps</div>`:""}
     </div>
     <div class="card" style="margin:10px 0 0;background:#0e151e">
       <b>Recent sessions</b>
-      ${entries.slice(0,8).map(x=>`<div class="small muted" style="padding:7px 0;border-bottom:1px solid var(--border)">${x.w.date}: ${x.e.sets.map(s=>`${s.weight}×${s.reps}`).join(" / ")}</div>`).join("")}
+      ${entries.slice(0,10).map(x=>`<div class="small muted" style="padding:8px 0;border-bottom:1px solid var(--border)">${x.workout.date}: ${(x.exercise.sets||[]).filter(s=>s.weight!==""&&s.reps!=="").map(s=>`${s.weight}×${s.reps}`).join(" / ")}</div>`).join("")}
     </div>`;
 }
 $("progressExercise").onchange=renderProgress;
 
 function generateSnapshot(){
   const db=loadDB();
-  const ws=[...db.workouts].sort((a,b)=>new Date(b.finishedAt)-new Date(a.finishedAt));
-  const recent=ws.slice(0,12);
+  const ws=[...db.workouts].sort((a,b)=>new Date(b.finishedAt||b.date)-new Date(a.finishedAt||a.date));
   const lines=[];
-  lines.push("PPL COACH SNAPSHOT");
+  lines.push("PPL COACH SNAPSHOT v3");
   lines.push(`Generated: ${new Date().toLocaleString()}`);
   lines.push(`Saved workouts: ${ws.length}`);
   lines.push("");
+
   ["Push","Pull","Legs"].forEach(day=>{
     const w=ws.find(x=>x.day===day);
     lines.push(`=== LATEST ${day.toUpperCase()} ===`);
     if(!w){lines.push("No saved workout.");lines.push("");return}
     lines.push(`Date: ${w.date}`);
     w.exercises.forEach(e=>{
-      const logged=e.sets.filter(s=>s.weight!==""&&s.reps!=="");
-      lines.push(`- ${e.name}: ${logged.map(s=>`${s.weight}kg x ${s.reps}`).join(" | ")} | ${e.progression||progressionStatus(e).text}`);
+      const logged=(e.sets||[]).filter(s=>s.weight!==""&&s.reps!=="");
+      lines.push(`- ${e.name}`);
+      logged.forEach((s,i)=>lines.push(`  Set ${i+1}: ${s.weight}kg x ${s.reps}${s.rir!==""&&s.rir!==undefined?` | RIR ${s.rir}`:""}`));
+      lines.push(`  Progression: ${e.progression||progressionStatus(e).text}`);
+      lines.push(`  Next: ${e.nextSuggestion||nextSessionSuggestion(e)}`);
+      if(e.note) lines.push(`  Note: ${e.note}`);
+      if(e.prSets?.length) lines.push(`  PR sets: ${e.prSets.map(i=>i+1).join(", ")}`);
     });
     lines.push("");
   });
-  lines.push("=== RECENT 12 WORKOUTS ===");
-  recent.forEach(w=>lines.push(`${w.date} ${w.day}: ${w.exercises.map(e=>e.name).join(", ")}`));
-  lines.push("");
-  lines.push("Instruction for coach: Review my latest per-set weights/reps, compare with previous sessions, identify progression or regression, and tell me exactly which exercises should increase load, hold load, or reduce load next session.");
+
+  lines.push("=== COACH INSTRUCTION ===");
+  lines.push("Compare my latest sets with prior sessions. Tell me exercise-by-exercise whether to increase load, keep load and add reps, or reduce/stabilize load. Consider RIR and notes when available. Flag unusually large performance drops, technique/pain notes, and new PRs.");
+
   $("snapshotBox").textContent=lines.join("\n");
 }
 $("snapshotBtn").onclick=generateSnapshot;
@@ -570,7 +668,7 @@ $("copySnapshotBtn").onclick=async()=>{
 };
 
 $("exportBtn").onclick=()=>{
-  const data={version:1, exportedAt:new Date().toISOString(), db:loadDB(), active:active};
+  const data={version:3, exportedAt:new Date().toISOString(), db:loadDB(), active:active};
   const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
   const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=`ppl-coach-backup-${today}.json`;a.click();URL.revokeObjectURL(a.href);
 };
@@ -615,16 +713,5 @@ renderSession();
 renderHistory();
 fillProgressExercises();
 </script>
-
-<script>
-if ("serviceWorker" in navigator) {
-  window.addEventListener("load", () => {
-    navigator.serviceWorker.register("./service-worker.js")
-      .then(() => console.log("PPL Coach service worker registered"))
-      .catch(err => console.warn("Service worker registration failed:", err));
-  });
-}
-</script>
-
 </body>
 </html>
