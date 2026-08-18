@@ -56,6 +56,13 @@ pre{white-space:pre-wrap;word-break:break-word;background:#0a1017;border:1px sol
 .timer{font-variant-numeric:tabular-nums;font-size:22px;font-weight:900}
 @media(max-width:520px){.grid2{grid-template-columns:1fr}.set-row{grid-template-columns:34px 1fr 1fr 38px}.app{padding-left:10px;padding-right:10px}}
 </style>
+
+<link rel="manifest" href="./manifest.webmanifest">
+<meta name="theme-color" content="#0b0f14">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="PPL Coach">
+
 </head>
 <body>
 <div class="toast" id="toast"></div>
@@ -608,5 +615,16 @@ renderSession();
 renderHistory();
 fillProgressExercises();
 </script>
+
+<script>
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("./service-worker.js")
+      .then(() => console.log("PPL Coach service worker registered"))
+      .catch(err => console.warn("Service worker registration failed:", err));
+  });
+}
+</script>
+
 </body>
 </html>
