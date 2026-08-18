@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>PPL Coach v1</title>
+<style>
+:root{
+  --bg:#0b0f14; --panel:#121922; --panel2:#182231; --text:#f5f7fa; --muted:#9aa7b5;
+  --accent:#4da3ff; --good:#52d273; --warn:#f6c85f; --danger:#ff6b6b; --border:#253244;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;background:var(--bg);color:var(--text);}
+.app{max-width:760px;margin:0 auto;padding:16px 14px 110px;}
+h1,h2,h3{margin:0}
+.topbar{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:16px}
+.title-wrap small{color:var(--muted)}
+.card{background:var(--panel);border:1px solid var(--border);border-radius:18px;padding:14px;margin:12px 0;box-shadow:0 8px 30px rgba(0,0,0,.18)}
+.row{display:flex;gap:10px;align-items:center}
+.wrap{flex-wrap:wrap}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+button,select,input,textarea{font:inherit}
+button{border:0;border-radius:14px;padding:12px 14px;background:var(--panel2);color:var(--text);font-weight:700}
+button.primary{background:var(--accent);color:#07101b}
+button.good{background:var(--good);color:#08150b}
+button.danger{background:var(--danger);color:#1b0606}
+button.ghost{border:1px solid var(--border);background:transparent}
+button:disabled{opacity:.45}
+select,input,textarea{width:100%;border:1px solid var(--border);background:#0e151e;color:var(--text);border-radius:12px;padding:11px}
+label{display:block;color:var(--muted);font-size:13px;margin-bottom:6px}
+.metric{background:#0e151e;border:1px solid var(--border);border-radius:14px;padding:10px}
+.metric b{font-size:20px;display:block}
+.metric span{color:var(--muted);font-size:12px}
+.tabs{position:fixed;bottom:0;left:0;right:0;background:rgba(11,15,20,.96);backdrop-filter:blur(14px);border-top:1px solid var(--border);display:flex;justify-content:center;z-index:10}
+.tabs-inner{width:min(760px,100%);display:grid;grid-template-columns:repeat(4,1fr);padding:8px}
+.tabbtn{padding:10px 4px;background:transparent;color:var(--muted);font-size:12px}
+.tabbtn.active{color:var(--accent)}
+.hidden{display:none!important}
+.exercise{border:1px solid var(--border);border-radius:16px;padding:12px;margin-top:10px;background:#0e151e}
+.exercise-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+.exercise-name{font-weight:800}
+.muted{color:var(--muted)}
+.small{font-size:12px}
+.set-row{display:grid;grid-template-columns:40px 1fr 1fr 42px;gap:8px;align-items:center;margin:8px 0}
+.set-num{text-align:center;color:var(--muted);font-weight:800}
+.iconbtn{padding:8px;border-radius:10px}
+.badge{display:inline-flex;padding:5px 8px;border-radius:999px;font-size:11px;font-weight:800;background:var(--panel2);color:var(--muted)}
+.badge.good{color:#06210d;background:var(--good)}
+.badge.warn{color:#231b04;background:var(--warn)}
+.sep{height:1px;background:var(--border);margin:12px 0}
+.history-item{padding:12px 0;border-bottom:1px solid var(--border)}
+.history-item:last-child{border-bottom:0}
+details summary{cursor:pointer;font-weight:700}
+pre{white-space:pre-wrap;word-break:break-word;background:#0a1017;border:1px solid var(--border);padding:12px;border-radius:12px;color:#cfe2ff}
+.toast{position:fixed;top:14px;left:50%;transform:translateX(-50%);background:#111b27;border:1px solid var(--border);padding:10px 14px;border-radius:12px;z-index:50;display:none}
+.timer{font-variant-numeric:tabular-nums;font-size:22px;font-weight:900}
+@media(max-width:520px){.grid2{grid-template-columns:1fr}.set-row{grid-template-columns:34px 1fr 1fr 38px}.app{padding-left:10px;padding-right:10px}}
+</style>
+</head>
+<body>
+<div class="toast" id="toast"></div>
+<div class="app">
+  <div class="topbar">
+    <div class="title-wrap">
+      <h1>PPL Coach</h1>
+      <small>Workout logger • Double progression • Coach snapshot</small>
+    </div>
+    <span class="badge" id="sessionStatus">No active session</span>
+  </div>
+
+  <section id="tab-workout">
+    <div class="card">
+      <h2>Start workout</h2>
+      <div class="grid2" style="margin-top:12px">
+        <div>
+          <label>Workout day</label>
+          <select id="dayType">
+            <option>Push</option><option>Pull</option><option>Legs</option>
+          </select>
+        </div>
+        <div>
+          <label>Date</label>
+          <input id="workoutDate" type="date">
+        </div>
+      </div>
+      <div class="row wrap" style="margin-top:12px">
+        <button class="primary" id="startBtn" type="button">Start / Resume</button>
+        <button class="ghost" id="clearSessionBtn">Clear current</button>
+      </div>
+    </div>
+
+    <div class="card hidden" id="sessionCard">
+      <div class="row" style="justify-content:space-between">
+        <div>
+          <h2 id="sessionTitle">Workout</h2>
+          <div class="muted small" id="sessionMeta"></div>
+        </div>
+        <div style="text-align:right">
+          <div class="timer" id="timerText">00:00</div>
+          <button class="ghost small" id="timerBtn">Start rest</button>
+        </div>
+      </div>
+
+      <div class="sep"></div>
+
+      <div class="grid2">
+        <div>
+          <label>Muscle / movement</label>
+          <select id="muscleSelect"></select>
+        </div>
+        <div>
+          <label>Exercise</label>
+          <select id="exerciseSelect"></select>
+        </div>
+      </div>
+      <div class="row wrap" style="margin-top:10px">
+        <button class="primary" id="addExerciseBtn">+ Add exercise</button>
+      </div>
+
+      <div id="exerciseList"></div>
+
+      <div class="sep"></div>
+      <button class="good" id="finishBtn" style="width:100%">Finish & Save Workout</button>
+    </div>
+  </section>
+
+  <section id="tab-history" class="hidden">
+    <div class="card">
+      <div class="row" style="justify-content:space-between">
+        <h2>Workout history</h2>
+        <button class="ghost" id="refreshHistoryBtn">Refresh</button>
+      </div>
+      <div id="historyList" style="margin-top:8px"></div>
+    </div>
+  </section>
+
+  <section id="tab-progress" class="hidden">
+    <div class="card">
+      <h2>Progress & last performance</h2>
+      <div style="margin-top:12px">
+        <label>Exercise</label>
+        <select id="progressExercise"></select>
+      </div>
+      <div id="progressContent" style="margin-top:12px"></div>
+    </div>
+  </section>
+
+  <section id="tab-data" class="hidden">
+    <div class="card">
+      <h2>Coach Snapshot</h2>
+      <p class="muted small">Copy this block into ChatGPT whenever you want me to review your latest weights, sets, reps and progression.</p>
+      <button class="primary" id="snapshotBtn">Generate snapshot</button>
+      <button class="ghost" id="copySnapshotBtn">Copy</button>
+      <pre id="snapshotBox">No snapshot generated yet.</pre>
+    </div>
+
+    <div class="card">
+      <h2>Backup & restore</h2>
+      <div class="row wrap" style="margin-top:12px">
+        <button id="exportBtn">Export JSON</button>
+        <label style="margin:0">
+          <input type="file" id="importFile" accept=".json,application/json" style="display:none">
+          <span style="display:inline-block;padding:12px 14px;background:var(--panel2);border-radius:14px;font-weight:700;cursor:pointer">Import JSON</span>
+        </label>
+      </div>
+      <p class="muted small">Data is stored locally on this device in this first version.</p>
+    </div>
+  </section>
+</div>
+
+<div class="tabs">
+  <div class="tabs-inner">
+    <button class="tabbtn active" data-tab="workout">🏋️<br>Workout</button>
+    <button class="tabbtn" data-tab="history">🧾<br>History</button>
+    <button class="tabbtn" data-tab="progress">📈<br>Progress</button>
+    <button class="tabbtn" data-tab="data">🧠<br>Coach/Data</button>
+  </div>
+</div>
+
+<script>
+const EXERCISES = {
+  Push: {
+    "Upper chest": [
+      {name:"Incline Dumbbell Press", type:"compound", min:8,max:12, rest:180, cue:"30–45° bench. Retract scapulae. Lower dumbbells under control toward upper chest; press without bouncing.", pitfalls:"Too-steep bench; elbows flared excessively; shortening ROM."},
+      {name:"Smith Machine Incline Press", type:"compound", min:8,max:12, rest:180, cue:"Set bench so bar tracks toward upper chest. Keep shoulder blades retracted and feet planted.", pitfalls:"Bench too far forward/back; bouncing; losing scapular position."},
+      {name:"Incline Chest Press Machine", type:"compound", min:8,max:12, rest:180, cue:"Adjust seat so handles line up with upper chest. Controlled eccentric, full comfortable ROM.", pitfalls:"Shoulders rolling forward; seat too low/high."}
+    ],
+    "Chest": [
+      {name:"Flat Dumbbell Press", type:"compound", min:8,max:12, rest:180, cue:"Feet planted, scapulae retracted, neutral wrist. Lower to comfortable chest depth.", pitfalls:"Bouncing; wrists bent back; shoulders protracted."},
+      {name:"Chest Press Machine", type:"compound", min:8,max:12, rest:180, cue:"Handles around mid-chest. Keep torso stable and press through chest.", pitfalls:"Seat misadjusted; locking shoulders forward."},
+      {name:"Cable Fly", type:"isolation", min:10,max:15, rest:105, cue:"Soft elbow bend. Bring arms together by adducting humerus; keep chest lifted.", pitfalls:"Turning into a press; excessive stretch."}
+    ],
+    "Shoulders": [
+      {name:"Dumbbell Shoulder Press", type:"compound", min:8,max:12, rest:180, cue:"Brace trunk, forearms vertical, press overhead without excessive lumbar extension.", pitfalls:"Overarching lower back; elbows too far behind torso."},
+      {name:"Machine Shoulder Press", type:"compound", min:8,max:12, rest:180, cue:"Seat height so handles start around shoulder level. Keep ribs down.", pitfalls:"Shrugging; excessive back arch."},
+      {name:"Cable Lateral Raise", type:"isolation", min:10,max:15, rest:105, cue:"Lead with elbows, raise in scapular plane to about shoulder height.", pitfalls:"Swinging; shrugging; excessive internal rotation."},
+      {name:"Dumbbell Lateral Raise", type:"isolation", min:10,max:15, rest:105, cue:"Use controlled reps and slight elbow bend. Stop around shoulder height.", pitfalls:"Momentum; traps dominating."}
+    ],
+    "Triceps": [
+      {name:"Cable Triceps Pushdown", type:"isolation", min:10,max:15, rest:105, cue:"Pin elbows near torso and fully extend without shoulder movement.", pitfalls:"Elbows drifting; torso swinging."},
+      {name:"Overhead Cable Triceps Extension", type:"isolation", min:10,max:15, rest:105, cue:"Keep upper arms fixed; allow deep elbow flexion then extend fully.", pitfalls:"Rib flare; shoulder movement."}
+    ]
+  },
+  Pull: {
+    "Back width": [
+      {name:"Lat Pulldown", type:"compound", min:8,max:12, rest:180, cue:"Drive elbows down toward ribs; slight lean back; control stretch overhead.", pitfalls:"Pulling behind neck; excessive body swing."},
+      {name:"Single-Arm Cable Lat Pulldown", type:"compound", min:8,max:12, rest:180, cue:"Reach fully, then pull elbow toward hip while keeping torso stable.", pitfalls:"Rotating torso; turning it into a row."},
+      {name:"Assisted Pull-Up", type:"compound", min:8,max:12, rest:180, cue:"Depress scapulae and pull chest upward while maintaining controlled ROM.", pitfalls:"Kipping; shrugging."}
+    ],
+    "Mid back": [
+      {name:"Chest-Supported Row", type:"compound", min:8,max:12, rest:180, cue:"Chest fixed to pad; pull elbows back and squeeze shoulder blades.", pitfalls:"Lifting chest; excessive shrugging."},
+      {name:"Seated Cable Row", type:"compound", min:8,max:12, rest:180, cue:"Neutral spine; initiate with scapular retraction then elbows.", pitfalls:"Rocking torso; overpulling."},
+      {name:"Machine Row", type:"compound", min:8,max:12, rest:180, cue:"Adjust chest pad; pull through elbows with controlled eccentric.", pitfalls:"Short ROM; shoulder elevation."}
+    ],
+    "Rear delts": [
+      {name:"Cable Rear-Delt Fly", type:"isolation", min:12,max:15, rest:105, cue:"Set cables around shoulder height. Sweep arms out with soft elbows.", pitfalls:"Turning into a row; shrugging."},
+      {name:"Reverse Pec Deck", type:"isolation", min:12,max:15, rest:105, cue:"Chest against pad; move arms outward in line with rear delts.", pitfalls:"Too much scapular retraction; momentum."}
+    ],
+    "Biceps": [
+      {name:"Incline Dumbbell Curl", type:"isolation", min:10,max:15, rest:105, cue:"Keep upper arm behind torso and supinate through the curl.", pitfalls:"Shoulder flexion; swinging."},
+      {name:"Cable Curl", type:"isolation", min:10,max:15, rest:105, cue:"Elbows fixed, full extension and controlled squeeze.", pitfalls:"Leaning back; partial ROM."},
+      {name:"Hammer Curl", type:"isolation", min:10,max:15, rest:105, cue:"Neutral grip, elbows close to torso.", pitfalls:"Momentum; wrist flexion."}
+    ]
+  },
+  Legs: {
+    "Quads": [
+      {name:"Hack Squat", type:"compound", min:8,max:12, rest:180, cue:"Feet placed for comfortable knee travel. Descend controlled and keep full-foot pressure.", pitfalls:"Heels lifting; depth beyond pelvic control."},
+      {name:"Leg Press", type:"compound", min:8,max:12, rest:180, cue:"Keep pelvis against pad; knees track toes; controlled deep ROM.", pitfalls:"Butt lifting; locking knees aggressively."},
+      {name:"Leg Extension", type:"isolation", min:10,max:15, rest:105, cue:"Align machine pivot with knee joint; extend smoothly and control down.", pitfalls:"Using momentum; misaligned seat."}
+    ],
+    "Hamstrings": [
+      {name:"Romanian Deadlift", type:"compound", min:8,max:12, rest:180, cue:"Push hips back with soft knees; keep bar/dumbbells close; stop when hamstrings limit ROM.", pitfalls:"Squatting the movement; lumbar rounding."},
+      {name:"Seated Leg Curl", type:"isolation", min:10,max:15, rest:105, cue:"Keep hips pinned and curl through full comfortable ROM.", pitfalls:"Hips lifting; rushing eccentric."},
+      {name:"Lying Leg Curl", type:"isolation", min:10,max:15, rest:105, cue:"Keep hips down and curl heels toward glutes.", pitfalls:"Lumbar hyperextension; partial reps."}
+    ],
+    "Glutes": [
+      {name:"Hip Thrust", type:"compound", min:8,max:12, rest:180, cue:"Posterior pelvic tilt at top; shins near vertical; pause in lockout.", pitfalls:"Overextending lumbar spine; feet too far/close."},
+      {name:"Cable Glute Kickback", type:"isolation", min:10,max:15, rest:105, cue:"Keep pelvis square and extend hip without lumbar movement.", pitfalls:"Swinging; rotating pelvis."}
+    ],
+    "Calves": [
+      {name:"Standing Calf Raise", type:"isolation", min:10,max:15, rest:105, cue:"Full stretch at bottom, controlled rise, pause at top.", pitfalls:"Bouncing; short ROM."},
+      {name:"Seated Calf Raise", type:"isolation", min:10,max:15, rest:105, cue:"Control bottom stretch and squeeze through plantar flexion.", pitfalls:"Fast bouncing reps."}
+    ]
+  }
+};
+
+const KEY = "ppl_coach_v1";
+const ACTIVE_KEY = "ppl_coach_active_v1";
+
+let active = null;
+let timerInterval = null;
+let timerEnd = null;
+
+const $ = id => document.getElementById(id);
+const today = new Date().toISOString().slice(0,10);
+$("workoutDate").value = today;
+
+function loadDB(){
+  try{return JSON.parse(localStorage.getItem(KEY)) || {workouts:[]}}catch{return {workouts:[]}}
+}
+function saveDB(db){ localStorage.setItem(KEY, JSON.stringify(db)); }
+function saveActive(){ localStorage.setItem(ACTIVE_KEY, JSON.stringify(active)); }
+function loadActive(){ try{return JSON.parse(localStorage.getItem(ACTIVE_KEY))}catch{return null} }
+function toast(msg){
+  const el=$("toast"); el.textContent=msg; el.style.display="block";
+  setTimeout(()=>el.style.display="none",1800);
+}
+function uuid(){
+  try{
+    if(window.crypto && typeof window.crypto.randomUUID === "function"){
+      return window.crypto.randomUUID();
+    }
+  }catch(e){}
+  return Date.now()+"-"+Math.random().toString(36).slice(2);
+}
+
+function fillMuscles(){
+  const day = active?.day || $("dayType").value;
+  const sel=$("muscleSelect");
+  sel.innerHTML="";
+  Object.keys(EXERCISES[day]).forEach(m=>{
+    const o=document.createElement("option");o.value=o.textContent=m;sel.appendChild(o);
+  });
+  fillExercises();
+}
+function fillExercises(){
+  const day=active?.day || $("dayType").value;
+  const muscle=$("muscleSelect").value;
+  const sel=$("exerciseSelect"); sel.innerHTML="";
+  (EXERCISES[day][muscle]||[]).forEach((e,i)=>{
+    const o=document.createElement("option");o.value=i;o.textContent=e.name;sel.appendChild(o);
+  });
+}
+$("muscleSelect").addEventListener("change",fillExercises);
+$("dayType").addEventListener("change",()=>{ if(!active) fillMuscles(); });
+
+function startSession(){
+  try{
+    if(active){
+      renderSession(); toast("Resumed current workout"); return;
+    }
+    const selectedDay = $("dayType").value;
+    const selectedDate = $("workoutDate").value || today;
+    if(!selectedDay){ alert("Choose Push, Pull or Legs first."); return; }
+    if(!selectedDate){ alert("Choose a workout date first."); return; }
+
+    active={
+      id:uuid(),
+      day:selectedDay,
+      date:selectedDate,
+      startedAt:new Date().toISOString(),
+      exercises:[]
+    };
+    saveActive();
+    fillMuscles();
+    renderSession();
+    toast("Workout started");
+  }catch(err){
+    console.error(err);
+    alert("Could not start workout: " + (err && err.message ? err.message : String(err)));
+  }
+}
+$("startBtn").addEventListener("click", startSession);
+
+$("clearSessionBtn").onclick=()=>{
+  if(!active){toast("No active workout");return}
+  if(confirm("Clear the current unsaved workout?")){
+    active=null;localStorage.removeItem(ACTIVE_KEY);renderSession();
+  }
+};
+
+function getMeta(name){
+  for(const day of Object.values(EXERCISES))
+    for(const group of Object.values(day))
+      for(const ex of group) if(ex.name===name) return ex;
+  return null;
+}
+
+function findLastPerformance(name){
+  const db=loadDB();
+  const ws=[...db.workouts].sort((a,b)=>new Date(b.finishedAt)-new Date(a.finishedAt));
+  for(const w of ws){
+    const e=w.exercises.find(x=>x.name===name);
+    if(e) return {workout:w, exercise:e};
+  }
+  return null;
+}
+
+function addExercise(){
+  if(!active) return;
+  const muscle=$("muscleSelect").value;
+  const meta=EXERCISES[active.day][muscle][+$("exerciseSelect").value];
+  const last=findLastPerformance(meta.name);
+  const sets = Array.from({length:3},(_,i)=>({
+    weight:last?.exercise?.sets?.[i]?.weight ?? "",
+    reps:"",
+  }));
+  active.exercises.push({
+    id:uuid(), muscle, name:meta.name, type:meta.type, min:meta.min,max:meta.max, rest:meta.rest,
+    cue:meta.cue,pitfalls:meta.pitfalls, sets
+  });
+  saveActive(); renderExerciseList();
+}
+$("addExerciseBtn").onclick=addExercise;
+
+function addSet(exId){
+  const ex=active.exercises.find(e=>e.id===exId);
+  const prev=ex.sets[ex.sets.length-1] || {};
+  ex.sets.push({weight:prev.weight??"",reps:""});
+  saveActive();renderExerciseList();
+}
+function removeSet(exId,i){
+  const ex=active.exercises.find(e=>e.id===exId);
+  if(ex.sets.length<=1)return;
+  ex.sets.splice(i,1);saveActive();renderExerciseList();
+}
+function removeExercise(exId){
+  active.exercises=active.exercises.filter(e=>e.id!==exId);saveActive();renderExerciseList();
+}
+function updateSet(exId,i,field,val){
+  const ex=active.exercises.find(e=>e.id===exId);
+  ex.sets[i][field]=val===""?"":Number(val);
+  saveActive();
+}
+
+function progressionStatus(ex){
+  const valid=ex.sets.filter(s=>s.weight!=="" && s.reps!=="");
+  if(!valid.length) return {text:"Not logged",cls:""};
+  const allTop = valid.length===ex.sets.length && valid.every(s=>Number(s.reps)>=ex.max);
+  if(allTop) return {text:"Increase weight next time",cls:"good"};
+  const allIn = valid.every(s=>Number(s.reps)>=ex.min && Number(s.reps)<=ex.max);
+  if(allIn) return {text:"Keep weight, add reps",cls:"warn"};
+  return {text:"Build reps / stabilize load",cls:""};
+}
+
+function renderExerciseList(){
+  const box=$("exerciseList");box.innerHTML="";
+  if(!active || !active.exercises.length){
+    box.innerHTML='<p class="muted small">No exercises added yet.</p>'; return;
+  }
+  active.exercises.forEach(ex=>{
+    const last=findLastPerformance(ex.name);
+    const status=progressionStatus(ex);
+    const div=document.createElement("div");div.className="exercise";
+    div.innerHTML=`
+      <div class="exercise-head">
+        <div>
+          <div class="exercise-name">${ex.name}</div>
+          <div class="muted small">${ex.muscle} • ${ex.min}–${ex.max} reps • Rest ${Math.round(ex.rest/60*10)/10} min</div>
+        </div>
+        <button class="iconbtn danger" data-remove="${ex.id}">×</button>
+      </div>
+      <div style="margin-top:8px"><span class="badge ${status.cls}">${status.text}</span></div>
+      ${last ? `<div class="muted small" style="margin-top:8px">Last: ${last.workout.date} • ${last.exercise.sets.map(s=>`${s.weight}kg×${s.reps}`).join(" / ")}</div>`:""}
+      <details style="margin-top:10px">
+        <summary>Technique</summary>
+        <div class="small muted" style="margin-top:8px"><b>Cue:</b> ${ex.cue}<br><b>Pitfalls:</b> ${ex.pitfalls}</div>
+      </details>
+      <div class="sep"></div>
+      <div class="small muted" style="display:grid;grid-template-columns:40px 1fr 1fr 42px;gap:8px">
+        <div>Set</div><div>Weight (kg)</div><div>Reps</div><div></div>
+      </div>
+      <div class="sets"></div>
+      <button class="ghost" data-addset="${ex.id}" style="width:100%;margin-top:6px">+ Add set</button>`;
+    const sets=div.querySelector(".sets");
+    ex.sets.forEach((s,i)=>{
+      const r=document.createElement("div");r.className="set-row";
+      r.innerHTML=`
+        <div class="set-num">${i+1}</div>
+        <input inputmode="decimal" type="number" step="0.5" min="0" value="${s.weight}" data-ex="${ex.id}" data-i="${i}" data-field="weight">
+        <input inputmode="numeric" type="number" step="1" min="0" value="${s.reps}" data-ex="${ex.id}" data-i="${i}" data-field="reps">
+        <button class="iconbtn ghost" data-rmset="${ex.id}" data-i="${i}">−</button>`;
+      sets.appendChild(r);
+    });
+    box.appendChild(div);
+  });
+  box.querySelectorAll("input[data-ex]").forEach(inp=>inp.oninput=e=>updateSet(e.target.dataset.ex,+e.target.dataset.i,e.target.dataset.field,e.target.value));
+  box.querySelectorAll("[data-addset]").forEach(b=>b.onclick=()=>addSet(b.dataset.addset));
+  box.querySelectorAll("[data-rmset]").forEach(b=>b.onclick=()=>removeSet(b.dataset.rmset,+b.dataset.i));
+  box.querySelectorAll("[data-remove]").forEach(b=>b.onclick=()=>removeExercise(b.dataset.remove));
+}
+
+function renderSession(){
+  const has=!!active;
+  $("sessionCard").classList.toggle("hidden",!has);
+  $("sessionStatus").textContent=has?`${active.day} active`:"No active session";
+  $("sessionStatus").className="badge "+(has?"warn":"");
+  if(has){
+    $("dayType").value=active.day;$("workoutDate").value=active.date;
+    $("sessionTitle").textContent=`${active.day} Workout`;
+    $("sessionMeta").textContent=`${active.date} • ${active.exercises.length} exercise(s)`;
+    fillMuscles();renderExerciseList();
+  }
+}
+
+function validateWorkout(){
+  if(!active.exercises.length) return "Add at least one exercise.";
+  for(const ex of active.exercises){
+    const logged=ex.sets.filter(s=>s.weight!=="" && s.reps!=="");
+    if(!logged.length) return `Log at least one set for ${ex.name}.`;
+  }
+  return null;
+}
+$("finishBtn").onclick=()=>{
+  const err=validateWorkout(); if(err){alert(err);return}
+  const db=loadDB();
+  active.finishedAt=new Date().toISOString();
+  active.exercises.forEach(ex=>{ex.progression=progressionStatus(ex).text});
+  db.workouts.push(active);saveDB(db);
+  active=null;localStorage.removeItem(ACTIVE_KEY);renderSession();renderHistory();fillProgressExercises();
+  toast("Workout saved");
+};
+
+function renderHistory(){
+  const db=loadDB(), box=$("historyList"); box.innerHTML="";
+  const ws=[...db.workouts].sort((a,b)=>new Date(b.finishedAt)-new Date(a.finishedAt));
+  if(!ws.length){box.innerHTML='<p class="muted">No saved workouts yet.</p>';return}
+  ws.forEach(w=>{
+    const d=document.createElement("div");d.className="history-item";
+    d.innerHTML=`<details><summary>${w.date} • ${w.day} • ${w.exercises.length} exercises</summary>
+      <div style="margin-top:8px">${w.exercises.map(e=>`
+        <div style="margin-bottom:10px"><b>${e.name}</b><br>
+        <span class="muted small">${e.sets.filter(s=>s.weight!==""&&s.reps!=="").map(s=>`${s.weight} kg × ${s.reps}`).join(" • ")}<br>${e.progression||""}</span></div>`).join("")}
+      </div></details>`;
+    box.appendChild(d);
+  });
+}
+$("refreshHistoryBtn").onclick=renderHistory;
+
+function allExerciseNames(){
+  const names=[];
+  for(const day of Object.values(EXERCISES))
+    for(const group of Object.values(day))
+      for(const e of group) if(!names.includes(e.name)) names.push(e.name);
+  return names.sort();
+}
+function fillProgressExercises(){
+  const sel=$("progressExercise"), prev=sel.value;
+  sel.innerHTML="";
+  allExerciseNames().forEach(n=>{const o=document.createElement("option");o.textContent=o.value=n;sel.appendChild(o)});
+  if(prev)sel.value=prev;
+  renderProgress();
+}
+function renderProgress(){
+  const name=$("progressExercise").value;
+  const db=loadDB();
+  const entries=[];
+  [...db.workouts].sort((a,b)=>new Date(b.finishedAt)-new Date(a.finishedAt)).forEach(w=>{
+    const e=w.exercises.find(x=>x.name===name); if(e)entries.push({w,e});
+  });
+  const box=$("progressContent");
+  if(!entries.length){box.innerHTML='<p class="muted">No history for this exercise yet.</p>';return}
+  const latest=entries[0], meta=getMeta(name);
+  const best=entries.flatMap(x=>x.e.sets.map(s=>({date:x.w.date,weight:+s.weight||0,reps:+s.reps||0})))
+    .sort((a,b)=>b.weight-a.weight || b.reps-a.reps)[0];
+  box.innerHTML=`
+    <div class="grid2">
+      <div class="metric"><b>${latest.w.date}</b><span>Last performed</span></div>
+      <div class="metric"><b>${best.weight} kg × ${best.reps}</b><span>Highest-weight set</span></div>
+    </div>
+    <div class="card" style="margin:10px 0 0;background:#0e151e">
+      <b>Latest sets</b>
+      <div class="muted small" style="margin-top:6px">${latest.e.sets.map(s=>`${s.weight} kg × ${s.reps}`).join("<br>")}</div>
+      <div style="margin-top:10px"><span class="badge ${progressionStatus(latest.e).cls}">${progressionStatus(latest.e).text}</span></div>
+      ${meta?`<div class="muted small" style="margin-top:10px">Target: ${meta.min}–${meta.max} reps</div>`:""}
+    </div>
+    <div class="card" style="margin:10px 0 0;background:#0e151e">
+      <b>Recent sessions</b>
+      ${entries.slice(0,8).map(x=>`<div class="small muted" style="padding:7px 0;border-bottom:1px solid var(--border)">${x.w.date}: ${x.e.sets.map(s=>`${s.weight}×${s.reps}`).join(" / ")}</div>`).join("")}
+    </div>`;
+}
+$("progressExercise").onchange=renderProgress;
+
+function generateSnapshot(){
+  const db=loadDB();
+  const ws=[...db.workouts].sort((a,b)=>new Date(b.finishedAt)-new Date(a.finishedAt));
+  const recent=ws.slice(0,12);
+  const lines=[];
+  lines.push("PPL COACH SNAPSHOT");
+  lines.push(`Generated: ${new Date().toLocaleString()}`);
+  lines.push(`Saved workouts: ${ws.length}`);
+  lines.push("");
+  ["Push","Pull","Legs"].forEach(day=>{
+    const w=ws.find(x=>x.day===day);
+    lines.push(`=== LATEST ${day.toUpperCase()} ===`);
+    if(!w){lines.push("No saved workout.");lines.push("");return}
+    lines.push(`Date: ${w.date}`);
+    w.exercises.forEach(e=>{
+      const logged=e.sets.filter(s=>s.weight!==""&&s.reps!=="");
+      lines.push(`- ${e.name}: ${logged.map(s=>`${s.weight}kg x ${s.reps}`).join(" | ")} | ${e.progression||progressionStatus(e).text}`);
+    });
+    lines.push("");
+  });
+  lines.push("=== RECENT 12 WORKOUTS ===");
+  recent.forEach(w=>lines.push(`${w.date} ${w.day}: ${w.exercises.map(e=>e.name).join(", ")}`));
+  lines.push("");
+  lines.push("Instruction for coach: Review my latest per-set weights/reps, compare with previous sessions, identify progression or regression, and tell me exactly which exercises should increase load, hold load, or reduce load next session.");
+  $("snapshotBox").textContent=lines.join("\n");
+}
+$("snapshotBtn").onclick=generateSnapshot;
+$("copySnapshotBtn").onclick=async()=>{
+  try{await navigator.clipboard.writeText($("snapshotBox").textContent);toast("Snapshot copied")}catch{toast("Copy failed — select text manually")}
+};
+
+$("exportBtn").onclick=()=>{
+  const data={version:1, exportedAt:new Date().toISOString(), db:loadDB(), active:active};
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
+  const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=`ppl-coach-backup-${today}.json`;a.click();URL.revokeObjectURL(a.href);
+};
+$("importFile").onchange=async e=>{
+  const f=e.target.files[0]; if(!f)return;
+  try{
+    const data=JSON.parse(await f.text());
+    const db=data.db || data;
+    if(!Array.isArray(db.workouts)) throw new Error("Invalid backup");
+    if(confirm("Import this backup and replace current saved workouts?")){
+      saveDB(db);
+      if(data.active){active=data.active;saveActive()} else {active=null;localStorage.removeItem(ACTIVE_KEY)}
+      renderSession();renderHistory();fillProgressExercises();toast("Backup imported");
+    }
+  }catch(err){alert("Import failed: "+err.message)}
+  e.target.value="";
+};
+
+$("timerBtn").onclick=()=>{
+  if(timerInterval){clearInterval(timerInterval);timerInterval=null;timerEnd=null;$("timerText").textContent="00:00";$("timerBtn").textContent="Start rest";return}
+  let sec=105;
+  if(active && active.exercises.length) sec=active.exercises[active.exercises.length-1].rest || 105;
+  timerEnd=Date.now()+sec*1000;$("timerBtn").textContent="Stop";
+  const tick=()=>{
+    const left=Math.max(0,Math.ceil((timerEnd-Date.now())/1000));
+    $("timerText").textContent=`${String(Math.floor(left/60)).padStart(2,"0")}:${String(left%60).padStart(2,"0")}`;
+    if(left<=0){clearInterval(timerInterval);timerInterval=null;$("timerBtn").textContent="Start rest"; if(navigator.vibrate)navigator.vibrate([200,100,200]);}
+  };
+  tick();timerInterval=setInterval(tick,250);
+};
+
+document.querySelectorAll(".tabbtn").forEach(btn=>btn.onclick=()=>{
+  document.querySelectorAll(".tabbtn").forEach(b=>b.classList.remove("active"));btn.classList.add("active");
+  ["workout","history","progress","data"].forEach(t=>$("tab-"+t).classList.toggle("hidden",t!==btn.dataset.tab));
+  if(btn.dataset.tab==="history")renderHistory();
+  if(btn.dataset.tab==="progress")fillProgressExercises();
+});
+
+active=loadActive();
+fillMuscles();
+renderSession();
+renderHistory();
+fillProgressExercises();
+</script>
+</body>
+</html>
