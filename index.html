@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="theme-color" content="#0b0f14" />
-<title>PPL Coach v5.1</title>
+<title>PPL Coach v5.2</title>
 <style>
 :root{
   --bg:#0b0f14; --panel:#121922; --panel2:#182231; --text:#f5f7fa; --muted:#9aa7b5;
@@ -103,7 +103,7 @@ pre{white-space:pre-wrap;word-break:break-word;background:#0a1017;border:1px sol
 <div class="app">
   <div class="topbar">
     <div class="title-wrap">
-      <h1>PPL Coach v5.1</h1>
+      <h1>PPL Coach v5.2</h1>
       <small>Fast logging • Auto rest • Smart picker • Cloud sync</small>
     </div>
     <span class="badge" id="sessionStatus">No active session</span>
@@ -233,8 +233,12 @@ Push:{
   E("Dumbbell Lateral Raise","isolation",10,15,105,"Controlled reps to about shoulder height.","Momentum; traps dominating.")
  ],
  "Triceps":[
-  E("Cable Triceps Pushdown","isolation",10,15,105,"Elbows pinned; full extension.","Elbows drifting."),
-  E("Overhead Cable Triceps Extension","isolation",10,15,105,"Upper arms fixed; deep elbow flexion.","Rib flare; shoulder movement.")
+  E("Cable Triceps Pushdown","isolation",10,15,105,"Elbows pinned near your sides; extend fully under control.","Elbows drifting; torso swinging."),
+  E("Rope Triceps Pushdown","isolation",10,15,105,"Keep elbows fixed; separate rope slightly at the bottom.","Shoulders moving; using body momentum."),
+  E("Overhead Cable Triceps Extension","isolation",10,15,105,"Upper arms fixed; allow a comfortable stretch then extend.","Rib flare; elbows moving too much."),
+  E("Single-Arm Cable Overhead Extension","isolation",10,15,105,"Work one arm at a time; keep upper arm stable and use a comfortable cable path.","Rotating torso; elbow drifting."),
+  E("Triceps Extension Machine","isolation",10,15,105,"Adjust seat/pad so the elbow joint lines up comfortably; extend without shoulder movement.","Poor seat setup; bouncing the stack."),
+  E("Lying Cable Triceps Extension","isolation",10,15,105,"Lie on a bench with cable behind you; keep upper arms stable and extend at the elbow.","Turning it into a pullover; moving shoulders excessively.")
  ]},
 Pull:{
  "Back width":[
@@ -252,9 +256,16 @@ Pull:{
   E("Reverse Pec Deck","isolation",12,15,105,"Chest on pad; arms outward.","Momentum; excessive scapular retraction.")
  ],
  "Biceps":[
-  E("Incline Dumbbell Curl","isolation",10,15,105,"Upper arm slightly behind torso; supinate.","Shoulder flexion; swinging."),
-  E("Cable Curl","isolation",10,15,105,"Elbows fixed; full extension.","Leaning back."),
-  E("Hammer Curl","isolation",10,15,105,"Neutral grip; elbows close.","Momentum.")
+  E("Incline Dumbbell Curl","isolation",10,15,105,"Keep upper arm slightly behind torso and curl without moving the shoulder.","Shoulder flexion; swinging."),
+  E("Cable Curl","isolation",10,15,105,"Keep elbows fixed and use a full controlled range.","Leaning back; shortening ROM."),
+  E("Hammer Curl","isolation",10,15,105,"Neutral grip; elbows stay close to the torso.","Momentum; wrist bending."),
+  E("EZ-Bar Curl","isolation",8,12,120,"Stand tall, keep elbows close, and curl without driving the hips forward.","Swinging; elbows drifting forward."),
+  E("Preacher Curl Machine","isolation",10,15,105,"Keep upper arms supported on the pad and control the bottom stretch.","Lifting elbows off pad; dropping the weight too fast."),
+  E("EZ-Bar Preacher Curl","isolation",10,15,105,"Keep upper arms planted on the pad and stop short of painful elbow lockout.","Bouncing from the bottom; excessive load."),
+  E("Single-Arm Preacher Dumbbell Curl","isolation",10,15,105,"Keep the whole upper arm supported and curl smoothly.","Shoulder lifting; partial ROM."),
+  E("Bayesian Cable Curl","isolation",10,15,105,"Stand slightly in front of the cable with the upper arm behind the torso; keep shoulder still.","Torso rotation; shoulder flexion."),
+  E("Spider Curl","isolation",10,15,105,"Chest supported on an incline bench; let arms hang and curl without shoulder movement.","Swinging; shortening the bottom range."),
+  E("Concentration Curl","isolation",10,15,105,"Brace the upper arm against the inner thigh and curl under control.","Using torso momentum; wrist flexion.")
  ]},
 Legs:{
  "Quads":[
@@ -613,14 +624,14 @@ async function cloudHealthCheck(){try{await cloudRequest("/rest/v1/ppl_workouts?
 $("syncNowBtn").onclick=()=>syncAllWorkouts(true);
 
 function generateSnapshot(){
- const ws=[...loadDB().workouts].sort((a,b)=>new Date(b.finishedAt||b.date)-new Date(a.finishedAt||a.date)),lines=["PPL COACH SNAPSHOT v5.1",`Generated: ${new Date().toLocaleString()}`,`Saved workouts: ${ws.length}`,""];
+ const ws=[...loadDB().workouts].sort((a,b)=>new Date(b.finishedAt||b.date)-new Date(a.finishedAt||a.date)),lines=["PPL COACH SNAPSHOT v5.2",`Generated: ${new Date().toLocaleString()}`,`Saved workouts: ${ws.length}`,""];
  ["Push","Pull","Legs"].forEach(day=>{const w=ws.find(x=>x.day===day);lines.push(`=== LATEST ${day.toUpperCase()} ===`);if(!w){lines.push("No saved workout.","");return}lines.push(`Date: ${w.date}`);w.exercises.forEach(e=>{lines.push(`- ${e.name}`);e.sets.filter(s=>s.weight!==""&&s.reps!=="").forEach((s,i)=>lines.push(`  Set ${i+1}: ${s.weight}kg x ${s.reps}${s.rir!==""?` | RIR ${s.rir}`:""}`));lines.push(`  Progression: ${e.progression||progressionStatus(e).text}`);if(e.note)lines.push(`  Note: ${e.note}`)});lines.push("")});
  $("snapshotBox").textContent=lines.join("\n");
 }
 $("snapshotBtn").onclick=generateSnapshot;
 $("copySnapshotBtn").onclick=async()=>{try{await navigator.clipboard.writeText($("snapshotBox").textContent);toast("Snapshot copied")}catch{toast("Copy failed")}};
 
-$("exportBtn").onclick=()=>{const data={version:5.1,exportedAt:new Date().toISOString(),db:loadDB(),active};const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"}),a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=`ppl-coach-backup-${today}.json`;a.click();URL.revokeObjectURL(a.href)};
+$("exportBtn").onclick=()=>{const data={version:5.2,exportedAt:new Date().toISOString(),db:loadDB(),active};const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"}),a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=`ppl-coach-backup-${today}.json`;a.click();URL.revokeObjectURL(a.href)};
 $("importFile").onchange=async e=>{const f=e.target.files[0];if(!f)return;try{const data=JSON.parse(await f.text()),db=data.db||data;if(!Array.isArray(db.workouts))throw new Error("Invalid backup");if(confirm("Replace current saved workouts with this backup?")){saveDB(db);if(data.active){active=data.active;saveActive()}else{active=null;localStorage.removeItem(ACTIVE_KEY)}renderSession();renderHistory();fillProgressExercises();toast("Backup imported")}}catch(err){alert("Import failed: "+err.message)}e.target.value=""};
 
 document.querySelectorAll(".tabbtn").forEach(btn=>btn.onclick=()=>{
