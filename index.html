@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="theme-color" content="#0b0f14" />
-<title>PPL Coach v5</title>
+<title>PPL Coach v5.1</title>
 <style>
 :root{
   --bg:#0b0f14; --panel:#121922; --panel2:#182231; --text:#f5f7fa; --muted:#9aa7b5;
@@ -87,6 +87,14 @@ pre{white-space:pre-wrap;word-break:break-word;background:#0a1017;border:1px sol
  .exercise{padding:10px}
  .exercise-actions button{padding:7px 8px}
 }
+
+.ppl-tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}
+.ppl-btn{border:1px solid var(--border);background:#0e151e;color:var(--muted)}
+.ppl-btn.active{background:var(--accent);color:#07101b;border-color:transparent}
+.section-title{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:18px 0 8px}
+.section-title h3{font-size:16px}
+.section-tag{font-size:11px;font-weight:900;padding:5px 8px;border-radius:999px;background:var(--panel2);color:var(--muted)}
+
 </style>
 </head>
 <body>
@@ -95,7 +103,7 @@ pre{white-space:pre-wrap;word-break:break-word;background:#0a1017;border:1px sol
 <div class="app">
   <div class="topbar">
     <div class="title-wrap">
-      <h1>PPL Coach v5</h1>
+      <h1>PPL Coach v5.1</h1>
       <small>Fast logging • Auto rest • Smart picker • Cloud sync</small>
     </div>
     <span class="badge" id="sessionStatus">No active session</span>
@@ -104,9 +112,17 @@ pre{white-space:pre-wrap;word-break:break-word;background:#0a1017;border:1px sol
   <section id="tab-workout">
     <div class="card">
       <h2>Start workout</h2>
-      <div class="grid2" style="margin-top:12px">
-        <div><label>Workout day</label><select id="dayType"><option>Push</option><option>Pull</option><option>Legs</option></select></div>
-        <div><label>Date</label><input id="workoutDate" type="date"></div>
+      <div style="margin-top:12px">
+        <label>Workout split</label>
+        <div class="ppl-tabs" id="startPplTabs">
+          <button class="ppl-btn active" data-startday="Push">Push</button>
+          <button class="ppl-btn" data-startday="Pull">Pull</button>
+          <button class="ppl-btn" data-startday="Legs">Legs</button>
+        </div>
+        <select id="dayType" class="hidden"><option>Push</option><option>Pull</option><option>Legs</option></select>
+      </div>
+      <div style="margin-top:12px">
+        <label>Date</label><input id="workoutDate" type="date">
       </div>
       <div class="row wrap" style="margin-top:12px">
         <button class="primary" id="startBtn">Start / Resume</button>
@@ -136,6 +152,11 @@ pre{white-space:pre-wrap;word-break:break-word;background:#0a1017;border:1px sol
   <section id="tab-progress" class="hidden">
     <div class="card">
       <h2>Progress & last performance</h2>
+      <div class="ppl-tabs" id="progressPplTabs">
+        <button class="ppl-btn active" data-progressday="Push">Push</button>
+        <button class="ppl-btn" data-progressday="Pull">Pull</button>
+        <button class="ppl-btn" data-progressday="Legs">Legs</button>
+      </div>
       <div style="margin-top:12px"><label>Exercise</label><select id="progressExercise"></select></div>
       <div id="progressContent" style="margin-top:12px"></div>
     </div>
@@ -184,7 +205,7 @@ pre{white-space:pre-wrap;word-break:break-word;background:#0a1017;border:1px sol
 
 <div id="pickerBackdrop" class="sheet-backdrop hidden">
   <div class="sheet">
-    <div class="sheet-head"><div><h2 id="pickerTitle">Add exercise</h2><div class="small muted" id="pickerSub">Choose an exercise</div></div><button class="ghost" id="closePickerBtn">Close</button></div>
+    <div class="sheet-head"><div><h2 id="pickerTitle">Add exercise</h2><div class="small muted" id="pickerSub">Choose an exercise</div><div class="section-tag" id="pickerDayTag" style="margin-top:6px;display:inline-flex">Push</div></div><button class="ghost" id="closePickerBtn">Close</button></div>
     <input id="pickerSearch" placeholder="Search exercise…">
     <div id="pickerChips" class="chips"></div>
     <div id="pickerList"></div>
@@ -300,6 +321,7 @@ let active=null;
 let timerInterval=null,timerEnd=null,timerPaused=false,timerRemaining=0;
 let pickerMode={type:"add",exerciseId:null};
 let pickerFilter="All";
+let progressDay="Push";
 
 function uuid(){try{if(crypto?.randomUUID)return crypto.randomUUID()}catch{} return Date.now()+"-"+Math.random().toString(36).slice(2)}
 function loadDB(){try{const d=JSON.parse(localStorage.getItem(KEY))||{workouts:[]};if(!Array.isArray(d.workouts))d.workouts=[];return d}catch{return{workouts:[]}}}
@@ -363,6 +385,12 @@ function startSession(){
  if(day==="Legs")LEGS_DEFAULT.forEach(x=>{const ex=buildExercise(x.name,x.sets);if(ex)active.exercises.push(ex)});
  saveActive();renderSession();toast(day==="Legs"?"Legs workout loaded":"Workout started");
 }
+
+document.querySelectorAll("[data-startday]").forEach(b=>b.onclick=()=>{
+  $("dayType").value=b.dataset.startday;
+  document.querySelectorAll("[data-startday]").forEach(x=>x.classList.toggle("active",x===b));
+});
+
 $("startBtn").onclick=startSession;
 $("clearSessionBtn").onclick=()=>{if(!active)return toast("No active workout");if(confirm("Clear current unsaved workout?")){active=null;localStorage.removeItem(ACTIVE_KEY);stopTimer();renderSession()}};
 
@@ -374,6 +402,7 @@ function renderSession(){
  $("sessionStatus").className="badge "+(has?"warn":"");
  if(has){
   $("dayType").value=active.day;$("workoutDate").value=active.date;
+  document.querySelectorAll("[data-startday]").forEach(x=>x.classList.toggle("active",x.dataset.startday===active.day));
   $("sessionTitle").textContent=`${active.day} Workout`;
   $("sessionMeta").textContent=`${active.date} • ${active.exercises.length} exercise(s)`;
   renderExerciseList();renderQuickJump();
@@ -479,6 +508,7 @@ function openPicker(type="add",exerciseId=null){
  pickerMode={type,exerciseId};pickerFilter="All";$("pickerSearch").value="";
  $("pickerTitle").textContent=type==="swap"?"Swap exercise":"Add exercise";
  $("pickerSub").textContent=type==="swap"?"Choose a replacement":"Search, filter, recent or favorite";
+ $("pickerDayTag").textContent=active.day+" exercises";
  $("pickerBackdrop").classList.remove("hidden");renderPicker();
 }
 function closePicker(){$("pickerBackdrop").classList.add("hidden")}
@@ -526,16 +556,42 @@ function renderHistory(){
  const db=loadDB(),box=$("historyList");box.innerHTML="";
  const ws=[...db.workouts].sort((a,b)=>new Date(b.finishedAt||b.date)-new Date(a.finishedAt||a.date));
  if(!ws.length){box.innerHTML='<p class="muted">No saved workouts yet.</p>';return}
- ws.forEach(w=>{const total=(w.exercises||[]).reduce((n,e)=>n+(e.sets||[]).filter(s=>s.weight!==""&&s.reps!=="").length,0),pr=(w.exercises||[]).reduce((n,e)=>n+(e.prSets?.length||0),0),d=document.createElement("div");d.className="history-item";
- d.innerHTML=`<details><summary><b>${w.date} • ${w.day} • ${w.exercises.length} exercises</b></summary>
-  <div class="kpi3" style="margin-top:10px"><div class="metric"><b>${total}</b><span>working sets</span></div><div class="metric"><b>${pr}</b><span>PR sets</span></div><div class="metric"><b>${w.exercises.length}</b><span>exercises</span></div></div>
-  <div style="margin-top:8px">${w.exercises.map(e=>`<div class="history-ex"><b>${e.name}</b><div class="muted small" style="margin-top:4px">${(e.sets||[]).filter(s=>s.weight!==""&&s.reps!=="").map((s,i)=>`Set ${i+1}: ${s.weight} kg × ${s.reps}${s.rir!==""&&s.rir!==undefined?` • RIR ${s.rir}`:""}`).join("<br>")}</div>${e.note?`<div class="small" style="margin-top:5px"><b>Note:</b> ${e.note}</div>`:""}</div>`).join("")}</div></details>`;
- box.appendChild(d)});
+ ["Push","Pull","Legs"].forEach(day=>{
+   const dayWs=ws.filter(w=>w.day===day);
+   const section=document.createElement("div");
+   section.innerHTML=`<div class="section-title"><h3>${day}</h3><span class="section-tag">${dayWs.length} workout${dayWs.length===1?"":"s"}</span></div>`;
+   box.appendChild(section);
+   if(!dayWs.length){
+     const empty=document.createElement("div"); empty.className="muted small"; empty.style.padding="4px 0 8px"; empty.textContent=`No saved ${day} workouts yet.`; box.appendChild(empty); return;
+   }
+   dayWs.forEach(w=>{
+     const total=(w.exercises||[]).reduce((n,e)=>n+(e.sets||[]).filter(s=>s.weight!==""&&s.reps!=="").length,0);
+     const pr=(w.exercises||[]).reduce((n,e)=>n+(e.prSets?.length||0),0);
+     const d=document.createElement("div");d.className="history-item";
+     d.innerHTML=`<details><summary><b>${w.date} • ${w.exercises.length} exercises</b></summary>
+      <div class="kpi3" style="margin-top:10px"><div class="metric"><b>${total}</b><span>working sets</span></div><div class="metric"><b>${pr}</b><span>PR sets</span></div><div class="metric"><b>${w.exercises.length}</b><span>exercises</span></div></div>
+      <div style="margin-top:8px">${w.exercises.map(e=>`<div class="history-ex"><b>${e.name}</b><div class="muted small" style="margin-top:4px">${(e.sets||[]).filter(s=>s.weight!==""&&s.reps!=="").map((s,i)=>`Set ${i+1}: ${s.weight} kg × ${s.reps}${s.rir!==""&&s.rir!==undefined?` • RIR ${s.rir}`:""}`).join("<br>")}</div>${e.note?`<div class="small" style="margin-top:5px"><b>Note:</b> ${e.note}</div>`:""}</div>`).join("")}</div></details>`;
+     box.appendChild(d);
+   });
+ });
 }
 $("refreshHistoryBtn").onclick=renderHistory;
 
-function allExerciseNames(){return [...new Set(allItems().map(x=>x.meta.name))].sort()}
-function fillProgressExercises(){const s=$("progressExercise"),prev=s.value;s.innerHTML="";allExerciseNames().forEach(n=>{const o=document.createElement("option");o.value=o.textContent=n;s.appendChild(o)});if(prev)s.value=prev;renderProgress()}
+function exerciseNamesForDay(day){
+ return [...new Set(allItems(day).map(x=>x.meta.name))].sort();
+}
+function fillProgressExercises(){
+ const s=$("progressExercise"),prev=s.value;s.innerHTML="";
+ const names=exerciseNamesForDay(progressDay);
+ names.forEach(n=>{const o=document.createElement("option");o.value=o.textContent=n;s.appendChild(o)});
+ if(prev&&names.includes(prev))s.value=prev;
+ renderProgress();
+}
+document.querySelectorAll("[data-progressday]").forEach(b=>b.onclick=()=>{
+ progressDay=b.dataset.progressday;
+ document.querySelectorAll("[data-progressday]").forEach(x=>x.classList.toggle("active",x===b));
+ fillProgressExercises();
+});
 function renderProgress(){
  const name=$("progressExercise").value,entries=historyForExercise(name),box=$("progressContent");if(!entries.length){box.innerHTML='<p class="muted">No history for this exercise yet.</p>';return}
  const latest=entries[0],all=entries.flatMap(x=>(x.exercise.sets||[]).filter(s=>s.weight!==""&&s.reps!=="").map(s=>({weight:+s.weight||0,reps:+s.reps||0}))),best=all.sort((a,b)=>b.weight-a.weight||b.reps-a.reps)[0],st=progressionStatus(latest.exercise);
@@ -557,14 +613,14 @@ async function cloudHealthCheck(){try{await cloudRequest("/rest/v1/ppl_workouts?
 $("syncNowBtn").onclick=()=>syncAllWorkouts(true);
 
 function generateSnapshot(){
- const ws=[...loadDB().workouts].sort((a,b)=>new Date(b.finishedAt||b.date)-new Date(a.finishedAt||a.date)),lines=["PPL COACH SNAPSHOT v5",`Generated: ${new Date().toLocaleString()}`,`Saved workouts: ${ws.length}`,""];
+ const ws=[...loadDB().workouts].sort((a,b)=>new Date(b.finishedAt||b.date)-new Date(a.finishedAt||a.date)),lines=["PPL COACH SNAPSHOT v5.1",`Generated: ${new Date().toLocaleString()}`,`Saved workouts: ${ws.length}`,""];
  ["Push","Pull","Legs"].forEach(day=>{const w=ws.find(x=>x.day===day);lines.push(`=== LATEST ${day.toUpperCase()} ===`);if(!w){lines.push("No saved workout.","");return}lines.push(`Date: ${w.date}`);w.exercises.forEach(e=>{lines.push(`- ${e.name}`);e.sets.filter(s=>s.weight!==""&&s.reps!=="").forEach((s,i)=>lines.push(`  Set ${i+1}: ${s.weight}kg x ${s.reps}${s.rir!==""?` | RIR ${s.rir}`:""}`));lines.push(`  Progression: ${e.progression||progressionStatus(e).text}`);if(e.note)lines.push(`  Note: ${e.note}`)});lines.push("")});
  $("snapshotBox").textContent=lines.join("\n");
 }
 $("snapshotBtn").onclick=generateSnapshot;
 $("copySnapshotBtn").onclick=async()=>{try{await navigator.clipboard.writeText($("snapshotBox").textContent);toast("Snapshot copied")}catch{toast("Copy failed")}};
 
-$("exportBtn").onclick=()=>{const data={version:5,exportedAt:new Date().toISOString(),db:loadDB(),active};const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"}),a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=`ppl-coach-backup-${today}.json`;a.click();URL.revokeObjectURL(a.href)};
+$("exportBtn").onclick=()=>{const data={version:5.1,exportedAt:new Date().toISOString(),db:loadDB(),active};const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"}),a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=`ppl-coach-backup-${today}.json`;a.click();URL.revokeObjectURL(a.href)};
 $("importFile").onchange=async e=>{const f=e.target.files[0];if(!f)return;try{const data=JSON.parse(await f.text()),db=data.db||data;if(!Array.isArray(db.workouts))throw new Error("Invalid backup");if(confirm("Replace current saved workouts with this backup?")){saveDB(db);if(data.active){active=data.active;saveActive()}else{active=null;localStorage.removeItem(ACTIVE_KEY)}renderSession();renderHistory();fillProgressExercises();toast("Backup imported")}}catch(err){alert("Import failed: "+err.message)}e.target.value=""};
 
 document.querySelectorAll(".tabbtn").forEach(btn=>btn.onclick=()=>{
@@ -575,6 +631,7 @@ document.querySelectorAll(".tabbtn").forEach(btn=>btn.onclick=()=>{
 });
 
 active=loadActive();
+if(active){$("dayType").value=active.day;document.querySelectorAll("[data-startday]").forEach(x=>x.classList.toggle("active",x.dataset.startday===active.day));}
 renderSession();renderHistory();fillProgressExercises();cloudHealthCheck();setTimeout(()=>syncAllWorkouts(false),1200);
 </script>
 </body>
