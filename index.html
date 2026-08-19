@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="theme-color" content="#0b0f14" />
-<title>PPL Coach v5.2</title>
+<title>PPL Coach v6</title>
 <style>
 :root{
   --bg:#0b0f14; --panel:#121922; --panel2:#182231; --text:#f5f7fa; --muted:#9aa7b5;
@@ -13,7 +13,7 @@
 *{box-sizing:border-box}
 html{scroll-behavior:smooth}
 body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;background:var(--bg);color:var(--text)}
-.app{max-width:760px;margin:0 auto;padding:16px 12px 170px}
+.app{max-width:760px;margin:0 auto;padding:16px 12px 235px}
 h1,h2,h3{margin:0}
 .topbar{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:12px}
 .title-wrap small,.muted{color:var(--muted)}
@@ -59,12 +59,12 @@ pre{white-space:pre-wrap;word-break:break-word;background:#0a1017;border:1px sol
 .tabs-inner{width:min(760px,100%);display:grid;grid-template-columns:repeat(4,1fr);padding:8px calc(8px + env(safe-area-inset-right)) calc(8px + env(safe-area-inset-bottom)) calc(8px + env(safe-area-inset-left))}
 .tabbtn{padding:10px 4px;background:transparent;color:var(--muted);font-size:12px}.tabbtn.active{color:var(--accent)}
 
-.floating-tools{position:fixed;left:50%;transform:translateX(-50%);bottom:78px;width:min(736px,calc(100% - 20px));display:flex;gap:8px;z-index:35;pointer-events:none}
+.floating-tools{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(84px + env(safe-area-inset-bottom));width:min(736px,calc(100% - 20px));display:flex;gap:8px;z-index:45;pointer-events:none}
 .float-timer,.float-add{pointer-events:auto;border:1px solid var(--border);box-shadow:0 8px 28px rgba(0,0,0,.35)}
-.float-timer{flex:1;background:#101923;display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-radius:16px}
-.timer-text{font-variant-numeric:tabular-nums;font-size:20px;font-weight:950}
-.float-add{background:var(--accent);color:#07101b;border-radius:16px;padding:0 16px;font-weight:950}
-.timer-controls{display:flex;gap:5px}.timer-controls button{padding:7px 9px;font-size:11px}
+.float-timer{flex:1;min-width:0;background:#101923;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 10px;border-radius:16px}
+.timer-text{font-variant-numeric:tabular-nums;font-size:21px;font-weight:950;line-height:1}
+.float-add{background:var(--accent);color:#07101b;border-radius:16px;padding:0 14px;font-weight:950;white-space:nowrap}
+.timer-controls{display:flex;gap:4px;flex-shrink:0}.timer-controls button{padding:7px 8px;font-size:11px}
 
 .sheet-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:70;display:flex;align-items:flex-end;justify-content:center}
 .sheet{width:min(760px,100%);max-height:82vh;background:#101721;border:1px solid var(--border);border-radius:22px 22px 0 0;padding:14px 14px calc(18px + env(safe-area-inset-bottom));overflow:auto}
@@ -82,6 +82,9 @@ pre{white-space:pre-wrap;word-break:break-word;background:#0a1017;border:1px sol
 
 @media(max-width:520px){
  .grid2,.kpi3{grid-template-columns:1fr}
+ .floating-tools{width:calc(100% - 14px);gap:6px;bottom:calc(82px + env(safe-area-inset-bottom))}
+ .float-add{padding:0 11px;font-size:13px}
+ .timer-controls button{padding:7px 6px;font-size:10px}
  .set-head,.set-row{grid-template-columns:24px 1fr 1fr .7fr 42px 32px;gap:4px}
  .app{padding-left:9px;padding-right:9px}
  .exercise{padding:10px}
@@ -103,8 +106,8 @@ pre{white-space:pre-wrap;word-break:break-word;background:#0a1017;border:1px sol
 <div class="app">
   <div class="topbar">
     <div class="title-wrap">
-      <h1>PPL Coach v5.2</h1>
-      <small>Fast logging • Auto rest • Smart picker • Cloud sync</small>
+      <h1>PPL Coach v6</h1>
+      <small>Complete PPL library • Auto rest • Smart swap • Cloud sync</small>
     </div>
     <span class="badge" id="sessionStatus">No active session</span>
   </div>
@@ -217,43 +220,78 @@ const E=(name,type,min,max,rest,cue,pitfalls)=>({name,type,min,max,rest,cue,pitf
 const EXERCISES={
 Push:{
  "Upper chest":[
-  E("Incline Dumbbell Press","compound",8,12,180,"30–45° bench, scapulae retracted, controlled eccentric.","Bench too steep; bouncing; short ROM."),
-  E("Smith Machine Incline Press","compound",8,12,180,"Set bench so bar tracks toward upper chest; feet planted.","Poor bench position; bouncing; losing scapular position."),
-  E("Incline Chest Press Machine","compound",8,12,180,"Seat so handles line up with upper chest.","Shoulders rolling forward; wrong seat height.")
+  E("Incline Dumbbell Press","compound",8,12,180,"30–45° bench; retract shoulder blades and lower under control.","Bench too steep; bouncing; shortening ROM."),
+  E("Incline Barbell Bench Press","compound",8,12,180,"Use a moderate incline and lower the bar toward the upper chest.","Excessive flare; bench too steep; bouncing."),
+  E("Smith Machine Incline Press","compound",8,12,180,"Set the bench so the bar tracks naturally toward the upper chest.","Poor bench position; bouncing; losing scapular position."),
+  E("Incline Chest Press Machine","compound",8,12,180,"Adjust the seat so the handles line up with upper chest.","Shoulders rolling forward; wrong seat height."),
+  E("Low-to-High Cable Fly","isolation",10,15,105,"Sweep the arms upward and inward while keeping a soft elbow bend.","Shrugging; turning it into a press."),
+  E("Incline Cable Fly","isolation",10,15,105,"Keep chest up and bring the arms together over the upper-chest line.","Excessive stretch; elbow angle changing too much.")
  ],
  "Chest":[
-  E("Flat Dumbbell Press","compound",8,12,180,"Feet planted, scapulae retracted, neutral wrist.","Bouncing; wrists bent back."),
-  E("Chest Press Machine","compound",8,12,180,"Handles around mid-chest; controlled ROM.","Shoulders rolling forward."),
-  E("Cable Fly","isolation",10,15,105,"Soft elbow bend; adduct the humerus.","Turning it into a press.")
+  E("Flat Barbell Bench Press","compound",6,10,180,"Feet planted, shoulder blades set, lower the bar under control to mid-chest.","Bouncing; elbows excessively flared; losing upper-back tightness."),
+  E("Flat Dumbbell Press","compound",8,12,180,"Keep shoulder blades retracted and use a comfortable full ROM.","Bouncing; wrists bent back; shoulders rolling forward."),
+  E("Smith Machine Flat Bench Press","compound",8,12,180,"Position the bench so the bar tracks toward mid-chest.","Bench too far forward/back; bouncing."),
+  E("Chest Press Machine","compound",8,12,180,"Handles around mid-chest; keep torso stable.","Shoulders rolling forward; poor seat setup."),
+  E("Plate-Loaded Chest Press","compound",8,12,180,"Set seat height so handles match the chest line and press evenly.","Uneven pressing; shortened ROM."),
+  E("Pec Deck Fly","isolation",10,15,105,"Keep a soft elbow bend and squeeze the chest without letting shoulders roll forward.","Excessive stretch; turning it into a press."),
+  E("Cable Fly","isolation",10,15,105,"Soft elbow bend; bring the arms together with controlled chest adduction.","Turning it into a press; excessive stretch."),
+  E("Chest-Focused Dip","compound",8,12,180,"Use a slight forward lean and controlled depth if shoulders tolerate it.","Dropping too deep; shoulder discomfort; bouncing."),
+  E("Weighted Push-Up","compound",8,15,150,"Keep a rigid torso and let shoulder blades move naturally.","Sagging hips; shortened ROM.")
  ],
  "Shoulders":[
-  E("Dumbbell Shoulder Press","compound",8,12,180,"Brace trunk; forearms vertical.","Excessive lumbar arch."),
-  E("Machine Shoulder Press","compound",8,12,180,"Handles start around shoulder level; ribs down.","Shrugging; back arch."),
-  E("Cable Lateral Raise","isolation",10,15,105,"Lead with elbows in scapular plane.","Swinging; shrugging."),
-  E("Dumbbell Lateral Raise","isolation",10,15,105,"Controlled reps to about shoulder height.","Momentum; traps dominating.")
+  E("Dumbbell Shoulder Press","compound",8,12,180,"Brace the trunk, keep forearms vertical, and press without excessive back arch.","Overarching; elbows too far behind torso."),
+  E("Machine Shoulder Press","compound",8,12,180,"Set handles around shoulder level and keep ribs down.","Shrugging; excessive lumbar arch."),
+  E("Smith Machine Shoulder Press","compound",8,12,180,"Set the seat so the bar clears the face naturally; keep upper back stable.","Bar path too far forward; excessive back arch."),
+  E("Arnold Press","compound",8,12,150,"Rotate smoothly through a comfortable range without forcing the shoulder.","Using momentum; excessive ROM."),
+  E("Cable Lateral Raise","isolation",10,15,105,"Lead with elbows in the scapular plane.","Swinging; shrugging."),
+  E("Single-Arm Cable Lateral Raise","isolation",10,15,105,"Keep torso stable and raise the arm smoothly to about shoulder height.","Leaning excessively; trap dominance."),
+  E("Dumbbell Lateral Raise","isolation",10,15,105,"Use controlled reps with a slight elbow bend.","Momentum; shrugging."),
+  E("Lateral Raise Machine","isolation",10,15,105,"Align shoulders with the machine pivot and raise without shrugging.","Seat misalignment; bouncing."),
+  E("Cable Front Raise","isolation",10,15,105,"Raise under control without leaning back.","Momentum; excessive height.")
  ],
  "Triceps":[
   E("Cable Triceps Pushdown","isolation",10,15,105,"Elbows pinned near your sides; extend fully under control.","Elbows drifting; torso swinging."),
-  E("Rope Triceps Pushdown","isolation",10,15,105,"Keep elbows fixed; separate rope slightly at the bottom.","Shoulders moving; using body momentum."),
+  E("Rope Triceps Pushdown","isolation",10,15,105,"Keep elbows fixed; separate the rope slightly at the bottom.","Shoulders moving; body momentum."),
+  E("Single-Arm Cable Pushdown","isolation",10,15,105,"Keep shoulder quiet and fully extend one arm at a time.","Torso rotation; elbow drifting."),
+  E("Cross-Body Cable Triceps Extension","isolation",10,15,105,"Keep upper arm stable and extend across the body with control.","Shoulder movement; using momentum."),
   E("Overhead Cable Triceps Extension","isolation",10,15,105,"Upper arms fixed; allow a comfortable stretch then extend.","Rib flare; elbows moving too much."),
-  E("Single-Arm Cable Overhead Extension","isolation",10,15,105,"Work one arm at a time; keep upper arm stable and use a comfortable cable path.","Rotating torso; elbow drifting."),
-  E("Triceps Extension Machine","isolation",10,15,105,"Adjust seat/pad so the elbow joint lines up comfortably; extend without shoulder movement.","Poor seat setup; bouncing the stack."),
-  E("Lying Cable Triceps Extension","isolation",10,15,105,"Lie on a bench with cable behind you; keep upper arms stable and extend at the elbow.","Turning it into a pullover; moving shoulders excessively.")
+  E("Single-Arm Cable Overhead Extension","isolation",10,15,105,"Work one arm at a time and choose a comfortable cable path.","Rotating torso; elbow drifting."),
+  E("Triceps Extension Machine","isolation",10,15,105,"Adjust seat/pad for a comfortable elbow position and extend smoothly.","Poor seat setup; bouncing the stack."),
+  E("Lying Cable Triceps Extension","isolation",10,15,105,"Lie on a bench with the cable behind you and keep upper arms stable.","Turning it into a pullover; shoulder movement."),
+  E("EZ-Bar Skull Crusher","isolation",8,12,120,"Keep upper arms relatively fixed and lower the bar behind or toward the forehead comfortably.","Elbows flaring excessively; too much load."),
+  E("Dumbbell Overhead Triceps Extension","isolation",10,15,105,"Keep ribs down and elbows comfortably forward.","Back arch; elbows spreading."),
+  E("Close-Grip Bench Press","compound",6,10,180,"Use a shoulder-width grip, keep elbows controlled, and press with triceps emphasis.","Grip too narrow; wrist discomfort; excessive flare."),
+  E("Dip Machine - Triceps Focus","compound",8,12,150,"Stay more upright and drive through elbow extension.","Too much forward lean; shoulder discomfort.")
  ]},
 Pull:{
  "Back width":[
-  E("Lat Pulldown","compound",8,12,180,"Drive elbows toward ribs; control stretch.","Behind-neck pulling; body swing."),
-  E("Single-Arm Cable Lat Pulldown","compound",8,12,180,"Reach fully then pull elbow toward hip.","Torso rotation."),
-  E("Assisted Pull-Up","compound",8,12,180,"Depress scapulae and pull chest upward.","Kipping; shrugging.")
+  E("Lat Pulldown","compound",8,12,180,"Drive elbows toward the ribs and control the overhead stretch.","Behind-neck pulling; body swing."),
+  E("Neutral-Grip Lat Pulldown","compound",8,12,180,"Keep chest tall and pull elbows down toward the hips.","Leaning too far back; shortened stretch."),
+  E("Wide-Grip Lat Pulldown","compound",8,12,180,"Use a comfortable wide grip and pull toward upper chest.","Pulling behind the neck; excessive momentum."),
+  E("Single-Arm Cable Lat Pulldown","compound",8,12,180,"Reach fully, then pull elbow toward the hip.","Torso rotation; turning it into a row."),
+  E("Assisted Pull-Up","compound",8,12,180,"Depress shoulder blades and pull the chest upward.","Kipping; shrugging."),
+  E("Pull-Up","compound",6,10,180,"Start from a controlled hang and pull without swinging.","Kipping; incomplete ROM."),
+  E("Machine Pullover","isolation",10,15,120,"Keep arms relatively fixed and drive the elbows down with the lats.","Turning it into a triceps movement; excessive torso motion."),
+  E("Straight-Arm Cable Pulldown","isolation",10,15,105,"Keep a soft elbow bend and sweep the arms down toward the thighs.","Bending elbows too much; lumbar swinging.")
  ],
  "Mid back":[
-  E("Chest-Supported Row","compound",8,12,180,"Chest fixed; pull elbows back.","Lifting chest; shrugging."),
-  E("Seated Cable Row","compound",8,12,180,"Neutral spine; retract then row.","Rocking torso."),
-  E("Machine Row","compound",8,12,180,"Adjust chest pad; pull through elbows.","Short ROM.")
+  E("T-Bar Row Machine","compound",8,12,180,"Keep chest supported if available and pull elbows back toward the torso.","Shrugging; jerking the weight; short ROM."),
+  E("Chest-Supported T-Bar Row","compound",8,12,180,"Keep sternum on the pad and drive elbows backward.","Lifting chest off the pad; momentum."),
+  E("Chest-Supported Row","compound",8,12,180,"Chest fixed to pad; pull elbows back and squeeze.","Lifting chest; excessive shrugging."),
+  E("Seated Cable Row","compound",8,12,180,"Neutral spine; retract then row through the elbows.","Rocking torso; overpulling."),
+  E("Close-Grip Seated Cable Row","compound",8,12,180,"Keep torso stable and pull handle toward lower ribs.","Excessive backward lean; shrugging."),
+  E("Machine Row","compound",8,12,180,"Adjust chest pad and pull through the elbows.","Short ROM; shoulder elevation."),
+  E("Iso-Lateral Row Machine","compound",8,12,180,"Keep torso fixed and row each side evenly.","Twisting; unequal ROM."),
+  E("Low Row Machine","compound",8,12,180,"Pull toward lower ribs while keeping shoulders away from ears.","Leaning back; shrugging."),
+  E("Barbell Row","compound",6,10,180,"Brace the trunk and row toward the lower chest/upper abdomen.","Lumbar rounding; excessive body English."),
+  E("One-Arm Dumbbell Row","compound",8,12,150,"Brace on a bench and pull elbow toward the hip/ribs.","Torso rotation; shrugging.")
  ],
  "Rear delts":[
-  E("Cable Rear-Delt Fly","isolation",12,15,105,"Sweep arms out with soft elbows.","Turning it into a row."),
-  E("Reverse Pec Deck","isolation",12,15,105,"Chest on pad; arms outward.","Momentum; excessive scapular retraction.")
+  E("Cable Rear-Delt Fly","isolation",12,15,105,"Sweep the arms outward with soft elbows.","Turning it into a row; shrugging."),
+  E("Single-Arm Cable Rear-Delt Fly","isolation",12,15,105,"Keep torso fixed and move the arm in the rear-delt plane.","Rotating the torso; excessive trap use."),
+  E("Reverse Pec Deck","isolation",12,15,105,"Chest on pad; move arms outward under control.","Momentum; excessive scapular retraction."),
+  E("Chest-Supported Rear-Delt Raise","isolation",12,15,105,"Lie chest-down on an incline bench and raise arms out wide.","Swinging; using too much upper trap."),
+  E("Face Pull","isolation",12,15,105,"Pull toward eye/forehead level with elbows high but comfortable.","Turning it into a row; excessive lumbar lean.")
  ],
  "Biceps":[
   E("Incline Dumbbell Curl","isolation",10,15,105,"Keep upper arm slightly behind torso and curl without moving the shoulder.","Shoulder flexion; swinging."),
@@ -265,29 +303,51 @@ Pull:{
   E("Single-Arm Preacher Dumbbell Curl","isolation",10,15,105,"Keep the whole upper arm supported and curl smoothly.","Shoulder lifting; partial ROM."),
   E("Bayesian Cable Curl","isolation",10,15,105,"Stand slightly in front of the cable with the upper arm behind the torso; keep shoulder still.","Torso rotation; shoulder flexion."),
   E("Spider Curl","isolation",10,15,105,"Chest supported on an incline bench; let arms hang and curl without shoulder movement.","Swinging; shortening the bottom range."),
-  E("Concentration Curl","isolation",10,15,105,"Brace the upper arm against the inner thigh and curl under control.","Using torso momentum; wrist flexion.")
+  E("Concentration Curl","isolation",10,15,105,"Brace the upper arm against the inner thigh and curl under control.","Using torso momentum; wrist flexion."),
+  E("Machine Biceps Curl","isolation",10,15,105,"Keep upper arms supported and curl without lifting the shoulders.","Seat setup; bouncing the stack."),
+  E("Reverse EZ-Bar Curl","isolation",10,15,105,"Use an overhand grip and keep elbows close to the torso.","Wrist collapse; swinging.")
+ ],
+ "Traps":[
+  E("Dumbbell Shrug","isolation",10,15,105,"Elevate shoulders straight up and pause briefly at the top.","Rolling the shoulders; bouncing."),
+  E("Smith Machine Shrug","isolation",10,15,105,"Stand tall and shrug vertically with a controlled stretch.","Leaning back; bouncing."),
+  E("Machine Shrug","isolation",10,15,105,"Keep arms long and elevate the shoulder girdle under control.","Short ROM; head thrusting forward.")
+ ],
+ "Forearms":[
+  E("Cable Wrist Curl","isolation",12,20,90,"Keep forearms supported and move mainly at the wrist.","Using elbow movement; excessive load."),
+  E("Dumbbell Wrist Curl","isolation",12,20,90,"Support forearms and curl the wrist through a controlled range.","Fast bouncing reps."),
+  E("Reverse Wrist Curl","isolation",12,20,90,"Keep forearms stable and extend the wrists smoothly.","Too much weight; shortened ROM.")
  ]},
 Legs:{
  "Quads":[
-  E("Smith Machine Squat","compound",8,12,180,"Brace hard, keep full-foot pressure, let knees track toes, descend only as deep as pelvic control allows.","Heels lifting; lumbar rounding; stance too far from bar path."),
-  E("Hack Squat","compound",8,12,180,"Controlled descent; full-foot pressure.","Heels lifting; losing pelvic control."),
-  E("Leg Press","compound",8,12,180,"Pelvis stays on pad; knees track toes; controlled deep ROM.","Butt lifting; aggressive knee lockout."),
-  E("Pendulum Squat","compound",8,12,180,"Stay braced and allow controlled knee travel.","Bouncing out of bottom."),
-  E("Leg Extension","isolation",10,15,105,"Align machine pivot with knee joint; squeeze at top.","Momentum; poor seat setup."),
-  E("Bulgarian Split Squat","compound",8,12,180,"Stable stance; controlled knee/hip flexion.","Losing balance; pushing off rear leg."),
-  E("Walking Lunges","compound",10,15,150,"Long controlled steps; torso stable.","Rushing; knee collapsing inward.")
+  E("Smith Machine Squat","compound",8,12,180,"Brace hard, keep full-foot pressure, and let knees track toes.","Heels lifting; lumbar rounding; poor stance."),
+  E("Hack Squat","compound",8,12,180,"Controlled descent and full-foot pressure.","Heels lifting; losing pelvic control."),
+  E("Leg Press","compound",8,12,180,"Keep pelvis on the pad; knees track toes; use controlled depth.","Butt lifting; aggressive knee lockout."),
+  E("Pendulum Squat","compound",8,12,180,"Stay braced and allow controlled knee travel.","Bouncing out of the bottom."),
+  E("Belt Squat","compound",8,12,180,"Keep torso tall and sit down between the hips with stable foot pressure.","Knees collapsing inward; shortened depth."),
+  E("Leg Extension","isolation",10,15,105,"Align machine pivot with the knee and squeeze at the top.","Momentum; poor seat setup."),
+  E("Bulgarian Split Squat","compound",8,12,180,"Use a stable stance and controlled knee/hip flexion.","Losing balance; pushing off rear leg."),
+  E("Smith Machine Split Squat","compound",8,12,180,"Use the Smith for stability and keep the front foot planted.","Front heel lifting; stance too short."),
+  E("Walking Lunges","compound",10,15,150,"Take controlled steps and keep knees tracking toes.","Rushing; knee collapse."),
+  E("Sissy Squat Machine","isolation",10,15,120,"Keep the movement controlled and use a pain-free knee range.","Dropping too deep too fast; knee discomfort.")
  ],
  "Hamstrings":[
-  E("Romanian Deadlift","compound",8,12,180,"Push hips back with soft knees; keep load close.","Squatting the movement; lumbar rounding."),
-  E("Seated Leg Curl","isolation",10,15,105,"Hips pinned; full comfortable ROM.","Hips lifting; fast eccentric."),
-  E("Lying Leg Curl","isolation",10,15,105,"Keep hips down; curl heels toward glutes.","Lumbar hyperextension."),
-  E("Standing Single-Leg Curl","isolation",10,15,105,"Keep thigh stable and curl smoothly.","Hip movement; shortened ROM.")
+  E("Romanian Deadlift","compound",8,12,180,"Push hips back with soft knees and keep the load close.","Squatting the movement; lumbar rounding."),
+  E("Dumbbell Romanian Deadlift","compound",8,12,180,"Hinge at the hips and keep dumbbells close to the legs.","Too much knee bend; rounding."),
+  E("Smith Machine Romanian Deadlift","compound",8,12,180,"Use the fixed bar path to focus on a controlled hip hinge.","Standing too far from the bar; lumbar rounding."),
+  E("Stiff-Leg Deadlift","compound",8,12,180,"Use only a slight knee bend and hinge through the hips.","Locked knees; excessive spinal flexion."),
+  E("Seated Leg Curl","isolation",10,15,105,"Keep hips pinned and use full comfortable ROM.","Hips lifting; fast eccentric."),
+  E("Lying Leg Curl","isolation",10,15,105,"Keep hips down and curl heels toward glutes.","Lumbar hyperextension; partial reps."),
+  E("Standing Single-Leg Curl","isolation",10,15,105,"Keep the thigh stable and curl smoothly.","Hip movement; shortened ROM."),
+  E("Nordic Hamstring Curl","compound",6,10,180,"Keep hips extended and lower under control using assistance as needed.","Bending at the hips; uncontrolled descent.")
  ],
  "Glutes":[
   E("Hip Thrust","compound",8,12,180,"Posterior pelvic tilt at lockout; shins near vertical.","Lumbar overextension."),
-  E("Smith Machine Hip Thrust","compound",8,12,180,"Pad the bar; stable bench; squeeze glutes at lockout.","Overextending lumbar spine."),
-  E("Cable Glute Kickback","isolation",10,15,105,"Pelvis square; extend hip without lumbar movement.","Swinging; rotating pelvis."),
-  E("Glute-Focused Leg Press","compound",8,12,180,"Slightly higher foot position; keep pelvis pinned.","Butt lifting.")
+  E("Smith Machine Hip Thrust","compound",8,12,180,"Pad the bar, use a stable bench, and squeeze glutes at lockout.","Overextending the lower back."),
+  E("Glute Drive Machine","compound",8,12,150,"Keep pelvis stable and drive through the hips without lumbar hyperextension.","Excessive back extension; short ROM."),
+  E("Cable Glute Kickback","isolation",10,15,105,"Keep pelvis square and extend the hip without lumbar movement.","Swinging; rotating pelvis."),
+  E("Glute-Focused Leg Press","compound",8,12,180,"Use a slightly higher foot position while keeping pelvis pinned.","Butt lifting; excessive depth."),
+  E("Cable Pull-Through","compound",10,15,120,"Hinge at the hips and squeeze glutes to stand tall.","Squatting the movement; hyperextending."),
+  E("Glute-Focused Bulgarian Split Squat","compound",8,12,180,"Use a slightly longer stride and controlled forward torso angle.","Losing balance; pushing off rear leg.")
  ],
  "Adductors":[
   E("Hip Adduction Machine","isolation",10,15,105,"Set a comfortable starting stretch and close legs under control.","Bouncing; excessive starting stretch."),
@@ -298,10 +358,12 @@ Legs:{
   E("Cable Hip Abduction","isolation",10,15,105,"Stand tall; move leg outward without leaning.","Using momentum.")
  ],
  "Calves":[
-  E("Smith Machine Standing Calf Raise","isolation",10,15,105,"Use a stable forefoot platform; full stretch at bottom, pause at top, knees softly extended.","Bouncing; short ROM; losing balance."),
-  E("Standing Calf Raise","isolation",10,15,105,"Full stretch; controlled rise; pause at top.","Bouncing; short ROM."),
-  E("Seated Calf Raise","isolation",10,15,105,"Control bottom stretch and squeeze through plantar flexion.","Fast bouncing reps."),
-  E("Leg Press Calf Raise","isolation",10,15,105,"Keep knees stable; move only through ankle plantar flexion.","Turning it into a leg press; short ROM.")
+  E("Smith Machine Standing Calf Raise","isolation",10,15,105,"Use a stable forefoot platform; full stretch at bottom and pause at top.","Bouncing; short ROM; losing balance."),
+  E("Standing Calf Raise","isolation",10,15,105,"Full stretch, controlled rise, pause at top.","Bouncing; short ROM."),
+  E("Seated Calf Raise","isolation",10,15,105,"Control the bottom stretch and squeeze through plantar flexion.","Fast bouncing reps."),
+  E("Leg Press Calf Raise","isolation",10,15,105,"Keep knees stable and move only through the ankle.","Turning it into a leg press; short ROM."),
+  E("Single-Leg Standing Calf Raise","isolation",10,15,105,"Use support for balance and work through a full ankle range.","Using momentum; partial reps."),
+  E("Donkey Calf Raise","isolation",10,15,105,"Keep the hip hinge stable and use a long controlled calf stretch.","Bouncing; excessive low-back movement.")
  ]}
 };
 
@@ -518,8 +580,9 @@ function openPicker(type="add",exerciseId=null){
  if(!active)return;
  pickerMode={type,exerciseId};pickerFilter="All";$("pickerSearch").value="";
  $("pickerTitle").textContent=type==="swap"?"Swap exercise":"Add exercise";
- $("pickerSub").textContent=type==="swap"?"Choose a replacement":"Search, filter, recent or favorite";
- $("pickerDayTag").textContent=active.day+" exercises";
+ const availableCount=allItems(active.day).length;
+ $("pickerSub").textContent=type==="swap"?`Choose a replacement • ${availableCount} options`:`Search, filter, favorites or recent • ${availableCount} options`;
+ $("pickerDayTag").textContent=active.day+" library";
  $("pickerBackdrop").classList.remove("hidden");renderPicker();
 }
 function closePicker(){$("pickerBackdrop").classList.add("hidden")}
@@ -624,14 +687,14 @@ async function cloudHealthCheck(){try{await cloudRequest("/rest/v1/ppl_workouts?
 $("syncNowBtn").onclick=()=>syncAllWorkouts(true);
 
 function generateSnapshot(){
- const ws=[...loadDB().workouts].sort((a,b)=>new Date(b.finishedAt||b.date)-new Date(a.finishedAt||a.date)),lines=["PPL COACH SNAPSHOT v5.2",`Generated: ${new Date().toLocaleString()}`,`Saved workouts: ${ws.length}`,""];
+ const ws=[...loadDB().workouts].sort((a,b)=>new Date(b.finishedAt||b.date)-new Date(a.finishedAt||a.date)),lines=["PPL COACH SNAPSHOT v6",`Generated: ${new Date().toLocaleString()}`,`Saved workouts: ${ws.length}`,""];
  ["Push","Pull","Legs"].forEach(day=>{const w=ws.find(x=>x.day===day);lines.push(`=== LATEST ${day.toUpperCase()} ===`);if(!w){lines.push("No saved workout.","");return}lines.push(`Date: ${w.date}`);w.exercises.forEach(e=>{lines.push(`- ${e.name}`);e.sets.filter(s=>s.weight!==""&&s.reps!=="").forEach((s,i)=>lines.push(`  Set ${i+1}: ${s.weight}kg x ${s.reps}${s.rir!==""?` | RIR ${s.rir}`:""}`));lines.push(`  Progression: ${e.progression||progressionStatus(e).text}`);if(e.note)lines.push(`  Note: ${e.note}`)});lines.push("")});
  $("snapshotBox").textContent=lines.join("\n");
 }
 $("snapshotBtn").onclick=generateSnapshot;
 $("copySnapshotBtn").onclick=async()=>{try{await navigator.clipboard.writeText($("snapshotBox").textContent);toast("Snapshot copied")}catch{toast("Copy failed")}};
 
-$("exportBtn").onclick=()=>{const data={version:5.2,exportedAt:new Date().toISOString(),db:loadDB(),active};const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"}),a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=`ppl-coach-backup-${today}.json`;a.click();URL.revokeObjectURL(a.href)};
+$("exportBtn").onclick=()=>{const data={version:6,exportedAt:new Date().toISOString(),db:loadDB(),active};const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"}),a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=`ppl-coach-backup-${today}.json`;a.click();URL.revokeObjectURL(a.href)};
 $("importFile").onchange=async e=>{const f=e.target.files[0];if(!f)return;try{const data=JSON.parse(await f.text()),db=data.db||data;if(!Array.isArray(db.workouts))throw new Error("Invalid backup");if(confirm("Replace current saved workouts with this backup?")){saveDB(db);if(data.active){active=data.active;saveActive()}else{active=null;localStorage.removeItem(ACTIVE_KEY)}renderSession();renderHistory();fillProgressExercises();toast("Backup imported")}}catch(err){alert("Import failed: "+err.message)}e.target.value=""};
 
 document.querySelectorAll(".tabbtn").forEach(btn=>btn.onclick=()=>{
